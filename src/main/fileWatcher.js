@@ -64,6 +64,17 @@ class WatcherManager {
     this._rules      = []
     /** @type {Electron.BrowserWindow | null} */
     this._mainWindow = null
+    /** @type {(logEntry: Object) => void} */
+    this._onLog      = null
+  }
+
+  /**
+   * Register a callback that is called every time a file is processed.
+   * The main process uses this to persist logs even when the renderer is hidden.
+   * @param {(logEntry: Object) => void} callback
+   */
+  setLogHandler(callback) {
+    this._onLog = typeof callback === 'function' ? callback : null
   }
 
   /**
@@ -226,6 +237,7 @@ class WatcherManager {
           logEntry = moveFile(filePath, rule.destination, rule)
         }
 
+        if (this._onLog) this._onLog(logEntry)
         safeSend(mainWindow, 'watcher:fileProcessed', logEntry)
         sendNotification(logEntry.fileName, rule.destination)
 
