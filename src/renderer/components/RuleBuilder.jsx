@@ -35,7 +35,7 @@ const S = {
   },
   warnMsg: {
     fontSize:   11,
-    color:      'var(--warning)',
+    color:      '#f59e0b',
     marginTop:  4,
   },
   row: {
@@ -60,7 +60,6 @@ const S = {
   },
 }
 
-// ─── Tiny helpers ─────────────────────────────────────────────────────────────
 function normalizeExt(raw) {
   const trimmed = raw.trim().toLowerCase()
   if (!trimmed) return null
@@ -85,7 +84,6 @@ function Toggle({ value, onChange, label }) {
         fontSize:   13,
       }}
     >
-      {/* Track */}
       <span style={{
         width:        40,
         height:       22,
@@ -96,7 +94,6 @@ function Toggle({ value, onChange, label }) {
         transition:   'background 0.2s',
         flexShrink:   0,
       }}>
-        {/* Thumb */}
         <span style={{
           position:     'absolute',
           top:          2,
@@ -114,7 +111,30 @@ function Toggle({ value, onChange, label }) {
   )
 }
 
-// ─── Default state factory ─────────────────────────────────────────────────
+function OptionCard({ active, title, desc, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        flex:          1,
+        padding:       '10px 12px',
+        borderRadius:  'var(--radius)',
+        border:        active ? '1.5px solid var(--accent)' : '1px solid var(--border-default)',
+        background:    active ? 'var(--accent-muted)' : 'var(--bg-overlay)',
+        color:         active ? 'var(--accent)' : 'var(--text-secondary)',
+        cursor:        'pointer',
+        textAlign:     'left',
+        fontFamily:    'DM Sans, sans-serif',
+        transition:    'all 0.15s',
+      }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 600 }}>{title}</div>
+      <div style={{ fontSize: 11, marginTop: 3, opacity: 0.75, lineHeight: 1.45 }}>{desc}</div>
+    </button>
+  )
+}
+
 function buildDefault() {
   return {
     id:               '',
@@ -126,25 +146,21 @@ function buildDefault() {
     },
     action:           'move',
     destination:      '',
+    organizeBy:       'extension', // 'extension' | 'none'
+    destinationBase:  'custom',    // 'custom' | 'source'
     autoCreateFolder: true,
     isActive:         true,
   }
 }
 
-// ─── RuleBuilder component ─────────────────────────────────────────────────
-/**
- * Props:
- *   rule     : Rule | null   — null = create mode, object = edit mode
- *   onSave   : (rule) => void
- *   onCancel : () => void
- */
 export default function RuleBuilder({ rule = null, onSave, onCancel }) {
-  // ── Form state ─────────────────────────────────────────────────────────────
   const [form, setForm] = useState(() => {
     if (rule) {
       return {
         ...buildDefault(),
         ...rule,
+        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'extension',
+        destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
         filters: {
           extensions:  rule.filters?.extensions  ?? [],
           namePattern: rule.filters?.namePattern ?? '',
@@ -154,22 +170,21 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
     return buildDefault()
   })
 
-  // ── Ext tag-input state ────────────────────────────────────────────────────
-  const [extInput, setExtInput]   = useState('')
-  const [extError, setExtError]   = useState('')
-  const extInputRef               = useRef(null)
+  const [extInput, setExtInput] = useState('')
+  const [extError, setExtError] = useState('')
+  const extInputRef = useRef(null)
 
-  // ── Validation errors ──────────────────────────────────────────────────────
-  const [errors, setErrors]       = useState({})
-  const [saving, setSaving]       = useState(false)
-  const ipcAvailable              = typeof window.automover !== 'undefined'
+  const [errors, setErrors] = useState({})
+  const [saving, setSaving] = useState(false)
+  const ipcAvailable = typeof window.automover !== 'undefined'
 
-  // ── Re-init if rule prop changes (e.g. open different rule in same mount) ──
   useEffect(() => {
     if (rule) {
       setForm({
         ...buildDefault(),
         ...rule,
+        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'extension',
+        destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
         filters: {
           extensions:  rule.filters?.extensions  ?? [],
           namePattern: rule.filters?.namePattern ?? '',
@@ -180,9 +195,9 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
     }
     setErrors({})
     setExtInput('')
+    setExtError('')
   }, [rule?.id])
 
-  // ── Field helpers ──────────────────────────────────────────────────────────
   const setField = useCallback((key, value) => {
     setForm(prev => ({ ...prev, [key]: value }))
     setErrors(prev => ({ ...prev, [key]: undefined }))
@@ -195,16 +210,21 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
     }))
   }, [])
 
-  // ── Browse folder ──────────────────────────────────────────────────────────
   const browseFolder = useCallback(async (fieldKey) => {
     if (!ipcAvailable) return
     const path = await window.automover.dialog.selectFolder()
-    if (path) {
-      setField(fieldKey, path)
-    }
+    if (path) setField(fieldKey, path)
   }, [ipcAvailable, setField])
 
-  // ── Extension tag-input logic ──────────────────────────────────────────────
+  const setOrganizeBy = (value) => {
+    setForm(prev => ({
+      ...prev,
+      organizeBy: value,
+      destinationBase: value === 'none' ? 'custom' : prev.destinationBase,
+    }))
+    setErrors(prev => ({ ...prev, destination: undefined }))
+  }
+
   const addExt = useCallback(() => {
     const ext = normalizeExt(extInput)
     if (!ext) { setExtInput(''); return }
@@ -231,31 +251,36 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
       e.preventDefault()
       addExt()
     }
-    // Backspace on empty input removes last ext
     if (e.key === 'Backspace' && extInput === '' && form.filters.extensions.length > 0) {
       setFilter('extensions', form.filters.extensions.slice(0, -1))
     }
   }
 
-  // ── Validation ─────────────────────────────────────────────────────────────
   const validate = () => {
     const errs = {}
-    if (!form.watchFolder.trim())   errs.watchFolder   = 'Folder sumber wajib diisi'
-    if (!form.destination.trim())   errs.destination   = 'Folder tujuan wajib diisi'
+    if (!form.watchFolder.trim()) errs.watchFolder = 'Folder sumber wajib diisi'
+
+    const needsCustomDestination = form.destinationBase !== 'source'
+    if (needsCustomDestination && !form.destination.trim()) {
+      errs.destination = 'Folder tujuan wajib diisi'
+    }
+
     if (
+      needsCustomDestination &&
+      form.organizeBy === 'none' &&
       form.watchFolder.trim() &&
       form.destination.trim() &&
       form.watchFolder.trim() === form.destination.trim()
     ) {
-      errs.destination = 'Folder tujuan tidak boleh sama dengan folder sumber'
+      errs.destination = 'Folder tujuan tetap tidak boleh sama dengan folder sumber'
     }
+
     return errs
   }
 
   const noFiltersWarning =
     form.filters.extensions.length === 0 && !form.filters.namePattern.trim()
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     const errs = validate()
     if (Object.keys(errs).length > 0) {
@@ -266,10 +291,12 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
     try {
       const finalRule = {
         ...form,
-        id:          form.id || uuidv4(),
-        name:        form.name.trim(),
-        watchFolder: form.watchFolder.trim(),
-        destination: form.destination.trim(),
+        id:              form.id || uuidv4(),
+        name:            form.name.trim(),
+        watchFolder:     form.watchFolder.trim(),
+        destination:     form.destinationBase === 'source' ? '' : form.destination.trim(),
+        organizeBy:      form.organizeBy,
+        destinationBase: form.destinationBase,
         filters: {
           extensions:  form.filters.extensions,
           namePattern: form.filters.namePattern.trim(),
@@ -281,7 +308,8 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
     }
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const customDestinationRequired = form.destinationBase !== 'source'
+
   return (
     <div style={{
       display:        'flex',
@@ -290,12 +318,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
       background:     'var(--bg-surface)',
       borderLeft:     '1px solid var(--border-subtle)',
     }}>
-      {/* Header */}
-      <div style={{
-        padding:      '20px 24px 16px',
-        borderBottom: '1px solid var(--border-subtle)',
-        flexShrink:   0,
-      }}>
+      <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
         <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0 }}>
           {rule ? 'Edit Aturan' : 'Buat Aturan Baru'}
         </h2>
@@ -304,11 +327,9 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
         </p>
       </div>
 
-      {/* Scrollable form body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* Rule Name */}
           <div>
             <label style={S.label}>Nama Aturan <span style={{ color: 'var(--text-muted)', textTransform: 'none', fontWeight: 400 }}>(opsional)</span></label>
             <input
@@ -316,11 +337,10 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
               type="text"
               value={form.name}
               onChange={e => setField('name', e.target.value)}
-              placeholder="Contoh: PDF ke Dokumen"
+              placeholder="Contoh: Rapikan folder Downloads"
             />
           </div>
 
-          {/* Watch Folder */}
           <div>
             <label style={S.label}>Folder Sumber <span style={{ color: 'var(--danger)' }}>*</span></label>
             <div style={S.row}>
@@ -330,21 +350,14 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
                   type="text"
                   value={form.watchFolder}
                   onChange={e => setField('watchFolder', e.target.value)}
-                  placeholder="C:\Users\Name\Downloads"
+                  placeholder="C:\\Users\\Name\\Downloads"
                 />
               </div>
               <button
                 type="button"
-                style={{
-                  ...S.browseBtn,
-                  opacity: ipcAvailable ? 1 : 0.4,
-                  cursor:  ipcAvailable ? 'pointer' : 'not-allowed',
-                  marginTop: 0,
-                  alignSelf: 'flex-start',
-                }}
+                style={{ ...S.browseBtn, opacity: ipcAvailable ? 1 : 0.4, cursor: ipcAvailable ? 'pointer' : 'not-allowed' }}
                 onClick={() => browseFolder('watchFolder')}
                 disabled={!ipcAvailable}
-                title={!ipcAvailable ? 'Ketik path secara manual' : 'Pilih folder'}
               >
                 📂 Browse
               </button>
@@ -352,44 +365,94 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
             {errors.watchFolder && <p style={S.errorMsg}>{errors.watchFolder}</p>}
           </div>
 
-          {/* Destination Folder */}
-          <div>
-            <label style={S.label}>Folder Tujuan <span style={{ color: 'var(--danger)' }}>*</span></label>
-            <div style={S.row}>
-              <div style={{ flex: 1 }}>
-                <input
-                  style={{ ...S.input, ...(errors.destination ? S.inputError : {}) }}
-                  type="text"
-                  value={form.destination}
-                  onChange={e => setField('destination', e.target.value)}
-                  placeholder="C:\Users\Name\Documents"
-                />
-              </div>
-              <button
-                type="button"
-                style={{
-                  ...S.browseBtn,
-                  opacity: ipcAvailable ? 1 : 0.4,
-                  cursor:  ipcAvailable ? 'pointer' : 'not-allowed',
-                  alignSelf: 'flex-start',
-                }}
-                onClick={() => browseFolder('destination')}
-                disabled={!ipcAvailable}
-                title={!ipcAvailable ? 'Ketik path secara manual' : 'Pilih folder'}
-              >
-                📂 Browse
-              </button>
-            </div>
-            {errors.destination && <p style={S.errorMsg}>{errors.destination}</p>}
-          </div>
-
-          {/* Divider */}
           <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '0 -4px' }} />
 
-          {/* Extensions tag-input */}
+          <div>
+            <label style={S.label}>Mode Tujuan</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <OptionCard
+                active={form.organizeBy === 'none'}
+                title="Folder tetap"
+                desc="File yang cocok masuk langsung ke satu folder tujuan."
+                onClick={() => setOrganizeBy('none')}
+              />
+              <OptionCard
+                active={form.organizeBy === 'extension'}
+                title="Berdasarkan ekstensi"
+                desc="Aplikasi membuat/memakai subfolder pdf, docx, jpg, dan sejenisnya."
+                onClick={() => setOrganizeBy('extension')}
+              />
+            </div>
+          </div>
+
+          {form.organizeBy === 'extension' && (
+            <div>
+              <label style={S.label}>Lokasi Subfolder Ekstensi</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <OptionCard
+                  active={form.destinationBase === 'custom'}
+                  title="Di folder tujuan"
+                  desc="Contoh: D:/Rapi/pdf, D:/Rapi/docx."
+                  onClick={() => setField('destinationBase', 'custom')}
+                />
+                <OptionCard
+                  active={form.destinationBase === 'source'}
+                  title="Di folder sumber"
+                  desc="Contoh: Downloads/pdf, Downloads/docx."
+                  onClick={() => setField('destinationBase', 'source')}
+                />
+              </div>
+            </div>
+          )}
+
+          {customDestinationRequired && (
+            <div>
+              <label style={S.label}>
+                {form.organizeBy === 'extension' ? 'Folder Tujuan Induk' : 'Folder Tujuan Tetap'} <span style={{ color: 'var(--danger)' }}>*</span>
+              </label>
+              <div style={S.row}>
+                <div style={{ flex: 1 }}>
+                  <input
+                    style={{ ...S.input, ...(errors.destination ? S.inputError : {}) }}
+                    type="text"
+                    value={form.destination}
+                    onChange={e => setField('destination', e.target.value)}
+                    placeholder="C:\\Users\\Name\\Documents\\Rapi"
+                  />
+                </div>
+                <button
+                  type="button"
+                  style={{ ...S.browseBtn, opacity: ipcAvailable ? 1 : 0.4, cursor: ipcAvailable ? 'pointer' : 'not-allowed' }}
+                  onClick={() => browseFolder('destination')}
+                  disabled={!ipcAvailable}
+                >
+                  📂 Browse
+                </button>
+              </div>
+              {errors.destination && <p style={S.errorMsg}>{errors.destination}</p>}
+              {form.organizeBy === 'extension' && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
+                  Subfolder ekstensi akan dibuat di dalam folder ini. Folder yang sudah ada akan langsung dipakai.
+                </p>
+              )}
+            </div>
+          )}
+
+          {form.organizeBy === 'extension' && form.destinationBase === 'source' && (
+            <div style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius)' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Folder tujuan mengikuti folder sumber
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>
+                File akan dipindahkan ke subfolder dalam folder sumber. Contoh: Downloads/pdf atau Downloads/docx.
+              </div>
+            </div>
+          )}
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '0 -4px' }} />
+
           <div>
             <label style={S.label}>Filter Ekstensi</label>
-            {/* Chip container + input */}
             <div
               style={{
                 display:      'flex',
@@ -424,32 +487,14 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
                   <button
                     type="button"
                     onClick={e => { e.stopPropagation(); removeExt(ext) }}
-                    style={{
-                      background: 'none',
-                      border:     'none',
-                      cursor:     'pointer',
-                      color:      'var(--accent)',
-                      padding:    '0 1px',
-                      lineHeight: 1,
-                      fontSize:   12,
-                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: '0 1px', lineHeight: 1, fontSize: 12 }}
                     title={`Hapus ${ext}`}
                   >×</button>
                 </span>
               ))}
               <input
                 ref={extInputRef}
-                style={{
-                  background:  'none',
-                  border:      'none',
-                  outline:     'none',
-                  color:       'var(--text-primary)',
-                  fontSize:    13,
-                  fontFamily:  'JetBrains Mono, monospace',
-                  minWidth:    80,
-                  flex:        1,
-                  userSelect:  'text',
-                }}
+                style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace', minWidth: 80, flex: 1, userSelect: 'text' }}
                 type="text"
                 value={extInput}
                 onChange={e => { setExtInput(e.target.value); setExtError('') }}
@@ -464,7 +509,6 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
             {extError && <p style={S.errorMsg}>{extError}</p>}
           </div>
 
-          {/* Name Pattern */}
           <div>
             <label style={S.label}>Filter Nama File</label>
             <input
@@ -478,51 +522,30 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
               Gunakan * sebagai wildcard. Biarkan kosong untuk tidak memfilter nama.
             </p>
             {noFiltersWarning && (
-              <p style={S.warnMsg}>
-                ⚠️ Tidak ada filter aktif — semua file di folder sumber akan diproses
-              </p>
+              <p style={S.warnMsg}>⚠️ Tidak ada filter aktif — semua file di folder sumber akan diproses</p>
             )}
           </div>
 
-          {/* Divider */}
           <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '0 -4px' }} />
 
-          {/* Action: Move / Copy */}
           <div>
             <label style={S.label}>Tindakan</label>
             <div style={{ display: 'flex', gap: 8 }}>
-              {[
-                { value: 'move', label: '✂️ Pindahkan (Move)', desc: 'File dihapus dari sumber' },
-                { value: 'copy', label: '📋 Salin (Copy)',     desc: 'File tetap di sumber'     },
-              ].map(opt => {
-                const active = form.action === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setField('action', opt.value)}
-                    style={{
-                      flex:          1,
-                      padding:       '10px 12px',
-                      borderRadius:  'var(--radius)',
-                      border:        active ? '1.5px solid var(--accent)' : '1px solid var(--border-default)',
-                      background:    active ? 'var(--accent-muted)' : 'var(--bg-overlay)',
-                      color:         active ? 'var(--accent)' : 'var(--text-secondary)',
-                      cursor:        'pointer',
-                      textAlign:     'left',
-                      fontFamily:    'DM Sans, sans-serif',
-                      transition:    'all 0.15s',
-                    }}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{opt.label}</div>
-                    <div style={{ fontSize: 11, marginTop: 2, opacity: 0.7 }}>{opt.desc}</div>
-                  </button>
-                )
-              })}
+              <OptionCard
+                active={form.action === 'move'}
+                title="✂️ Pindahkan (Move)"
+                desc="File dihapus dari sumber."
+                onClick={() => setField('action', 'move')}
+              />
+              <OptionCard
+                active={form.action === 'copy'}
+                title="📋 Salin (Copy)"
+                desc="File tetap di sumber."
+                onClick={() => setField('action', 'copy')}
+              />
             </div>
           </div>
 
-          {/* Auto-create folder */}
           <div style={{
             display:      'flex',
             alignItems:   'center',
@@ -540,20 +563,14 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
               style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }}
             />
             <label htmlFor="autoCreate" style={{ cursor: 'pointer', userSelect: 'none' }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Buat folder tujuan otomatis</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Buat folder otomatis</span>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                Jika folder tujuan belum ada, buat secara otomatis
+                Jika folder tujuan atau subfolder ekstensi belum ada, buat secara otomatis. Jika sudah ada, folder itu akan dipakai.
               </span>
             </label>
           </div>
 
-          {/* Active toggle */}
-          <div style={{
-            padding:      '12px 14px',
-            background:   'var(--bg-elevated)',
-            borderRadius: 'var(--radius)',
-            border:       '1px solid var(--border-subtle)',
-          }}>
+          <div style={{ padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', border: '1px solid var(--border-subtle)' }}>
             <Toggle
               value={form.isActive}
               onChange={v => setField('isActive', v)}
@@ -567,35 +584,15 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
               }
             />
           </div>
-
         </div>
       </div>
 
-      {/* Footer actions */}
-      <div style={{
-        padding:      '14px 24px',
-        borderTop:    '1px solid var(--border-subtle)',
-        display:      'flex',
-        gap:          8,
-        flexShrink:   0,
-        background:   'var(--bg-surface)',
-      }}>
+      <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8, flexShrink: 0, background: 'var(--bg-surface)' }}>
         <button
           type="button"
           onClick={onCancel}
           disabled={saving}
-          style={{
-            flex:         1,
-            padding:      '9px 0',
-            borderRadius: 'var(--radius)',
-            border:       '1px solid var(--border-default)',
-            background:   'transparent',
-            color:        'var(--text-secondary)',
-            fontSize:     13,
-            fontWeight:   500,
-            cursor:       saving ? 'not-allowed' : 'pointer',
-            fontFamily:   'DM Sans, sans-serif',
-          }}
+          style={{ flex: 1, padding: '9px 0', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}
         >
           Batal
         </button>
@@ -603,19 +600,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          style={{
-            flex:         2,
-            padding:      '9px 0',
-            borderRadius: 'var(--radius)',
-            border:       'none',
-            background:   saving ? 'var(--accent-muted)' : 'var(--accent)',
-            color:        saving ? 'var(--accent)' : '#fff',
-            fontSize:     13,
-            fontWeight:   600,
-            cursor:       saving ? 'not-allowed' : 'pointer',
-            fontFamily:   'DM Sans, sans-serif',
-            transition:   'background 0.15s',
-          }}
+          style={{ flex: 2, padding: '9px 0', borderRadius: 'var(--radius)', border: 'none', background: saving ? 'var(--accent-muted)' : 'var(--accent)', color: saving ? 'var(--accent)' : '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'background 0.15s' }}
         >
           {saving ? 'Menyimpan...' : rule ? '✓ Simpan Perubahan' : '+ Simpan Aturan'}
         </button>
