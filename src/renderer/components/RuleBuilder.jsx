@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
-// ─── Shared style tokens ──────────────────────────────────────────────────────
 const S = {
   label: {
     display:      'block',
@@ -127,6 +126,7 @@ function OptionCard({ active, title, desc, onClick }) {
         textAlign:     'left',
         fontFamily:    'DM Sans, sans-serif',
         transition:    'all 0.15s',
+        minWidth:      0,
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 600 }}>{title}</div>
@@ -146,8 +146,8 @@ function buildDefault() {
     },
     action:           'move',
     destination:      '',
-    organizeBy:       'extension', // 'extension' | 'none'
-    destinationBase:  'custom',    // 'custom' | 'source'
+    organizeBy:       'category', // 'category' | 'extension' | 'none'
+    destinationBase:  'custom',   // 'custom' | 'source'
     autoCreateFolder: true,
     isActive:         true,
   }
@@ -159,7 +159,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
       return {
         ...buildDefault(),
         ...rule,
-        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'extension',
+        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
         destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
         filters: {
           extensions:  rule.filters?.extensions  ?? [],
@@ -183,7 +183,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
       setForm({
         ...buildDefault(),
         ...rule,
-        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'extension',
+        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
         destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
         filters: {
           extensions:  rule.filters?.extensions  ?? [],
@@ -309,6 +309,8 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
   }
 
   const customDestinationRequired = form.destinationBase !== 'source'
+  const isGroupedMode = form.organizeBy === 'extension' || form.organizeBy === 'category'
+  const groupLabel = form.organizeBy === 'category' ? 'kategori' : 'ekstensi'
 
   return (
     <div style={{
@@ -369,36 +371,44 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
 
           <div>
             <label style={S.label}>Mode Tujuan</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
               <OptionCard
-                active={form.organizeBy === 'none'}
-                title="Folder tetap"
-                desc="File yang cocok masuk langsung ke satu folder tujuan."
-                onClick={() => setOrganizeBy('none')}
+                active={form.organizeBy === 'category'}
+                title="Smart Category"
+                desc="Kelompokkan otomatis ke Documents, Images, Videos, Audio, Archives, Installers, Code, Fonts, dan Others."
+                onClick={() => setOrganizeBy('category')}
               />
-              <OptionCard
-                active={form.organizeBy === 'extension'}
-                title="Berdasarkan ekstensi"
-                desc="Aplikasi membuat/memakai subfolder pdf, docx, jpg, dan sejenisnya."
-                onClick={() => setOrganizeBy('extension')}
-              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <OptionCard
+                  active={form.organizeBy === 'extension'}
+                  title="Berdasarkan ekstensi"
+                  desc="Membuat/memakai subfolder pdf, docx, jpg, dan sejenisnya."
+                  onClick={() => setOrganizeBy('extension')}
+                />
+                <OptionCard
+                  active={form.organizeBy === 'none'}
+                  title="Folder tetap"
+                  desc="File yang cocok masuk langsung ke satu folder tujuan."
+                  onClick={() => setOrganizeBy('none')}
+                />
+              </div>
             </div>
           </div>
 
-          {form.organizeBy === 'extension' && (
+          {isGroupedMode && (
             <div>
-              <label style={S.label}>Lokasi Subfolder Ekstensi</label>
+              <label style={S.label}>Lokasi Subfolder {form.organizeBy === 'category' ? 'Kategori' : 'Ekstensi'}</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <OptionCard
                   active={form.destinationBase === 'custom'}
                   title="Di folder tujuan"
-                  desc="Contoh: D:/Rapi/pdf, D:/Rapi/docx."
+                  desc={form.organizeBy === 'category' ? 'Contoh: D:/Rapi/Documents, D:/Rapi/Images.' : 'Contoh: D:/Rapi/pdf, D:/Rapi/docx.'}
                   onClick={() => setField('destinationBase', 'custom')}
                 />
                 <OptionCard
                   active={form.destinationBase === 'source'}
                   title="Di folder sumber"
-                  desc="Contoh: Downloads/pdf, Downloads/docx."
+                  desc={form.organizeBy === 'category' ? 'Contoh: Downloads/Documents, Downloads/Images.' : 'Contoh: Downloads/pdf, Downloads/docx.'}
                   onClick={() => setField('destinationBase', 'source')}
                 />
               </div>
@@ -408,7 +418,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
           {customDestinationRequired && (
             <div>
               <label style={S.label}>
-                {form.organizeBy === 'extension' ? 'Folder Tujuan Induk' : 'Folder Tujuan Tetap'} <span style={{ color: 'var(--danger)' }}>*</span>
+                {isGroupedMode ? 'Folder Tujuan Induk' : 'Folder Tujuan Tetap'} <span style={{ color: 'var(--danger)' }}>*</span>
               </label>
               <div style={S.row}>
                 <div style={{ flex: 1 }}>
@@ -430,21 +440,32 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
                 </button>
               </div>
               {errors.destination && <p style={S.errorMsg}>{errors.destination}</p>}
-              {form.organizeBy === 'extension' && (
+              {isGroupedMode && (
                 <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
-                  Subfolder ekstensi akan dibuat di dalam folder ini. Folder yang sudah ada akan langsung dipakai.
+                  Subfolder {groupLabel} akan dibuat di dalam folder ini. Folder yang sudah ada akan langsung dipakai.
                 </p>
               )}
             </div>
           )}
 
-          {form.organizeBy === 'extension' && form.destinationBase === 'source' && (
+          {isGroupedMode && form.destinationBase === 'source' && (
             <div style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius)' }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                 Folder tujuan mengikuti folder sumber
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>
-                File akan dipindahkan ke subfolder dalam folder sumber. Contoh: Downloads/pdf atau Downloads/docx.
+                File akan dipindahkan ke subfolder dalam folder sumber. Folder lama yang namanya sama akan langsung dipakai.
+              </div>
+            </div>
+          )}
+
+          {form.organizeBy === 'category' && (
+            <div style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius)' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Kategori bawaan
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.6 }}>
+                Documents, Images, Videos, Audio, Archives, Installers, Code, Fonts, dan Others.
               </div>
             </div>
           )}
@@ -565,7 +586,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
             <label htmlFor="autoCreate" style={{ cursor: 'pointer', userSelect: 'none' }}>
               <span style={{ fontSize: 13, fontWeight: 500 }}>Buat folder otomatis</span>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                Jika folder tujuan atau subfolder ekstensi belum ada, buat secara otomatis. Jika sudah ada, folder itu akan dipakai.
+                Jika folder tujuan atau subfolder belum ada, buat secara otomatis. Jika sudah ada, folder itu akan dipakai.
               </span>
             </label>
           </div>
