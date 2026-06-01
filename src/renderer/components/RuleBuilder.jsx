@@ -2,61 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 
 const S = {
-  label: {
-    display:      'block',
-    fontSize:     12,
-    fontWeight:   600,
-    color:        'var(--text-secondary)',
-    marginBottom: 6,
-    letterSpacing: '0.04em',
-    textTransform: 'uppercase',
-  },
-  input: {
-    width:        '100%',
-    background:   'var(--bg-overlay)',
-    border:       '1px solid var(--border-default)',
-    borderRadius: 'var(--radius)',
-    color:        'var(--text-primary)',
-    fontSize:     13,
-    padding:      '8px 12px',
-    outline:      'none',
-    fontFamily:   'DM Sans, sans-serif',
-    transition:   'border-color 0.15s',
-    userSelect:   'text',
-  },
-  inputError: {
-    borderColor: 'var(--danger)',
-  },
-  errorMsg: {
-    fontSize:   11,
-    color:      'var(--danger)',
-    marginTop:  4,
-  },
-  warnMsg: {
-    fontSize:   11,
-    color:      '#f59e0b',
-    marginTop:  4,
-  },
-  row: {
-    display:        'flex',
-    gap:            8,
-    alignItems:     'flex-start',
-  },
-  browseBtn: {
-    flexShrink:   0,
-    background:   'var(--bg-overlay)',
-    border:       '1px solid var(--border-default)',
-    borderRadius: 'var(--radius)',
-    color:        'var(--text-secondary)',
-    fontSize:     12,
-    fontWeight:   500,
-    padding:      '8px 12px',
-    cursor:       'pointer',
-    whiteSpace:   'nowrap',
-    fontFamily:   'DM Sans, sans-serif',
-    transition:   'background 0.15s, color 0.15s',
-    marginTop:    0,
-  },
+  label: { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase' },
+  input: { width: '100%', background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', fontFamily: 'DM Sans, sans-serif', userSelect: 'text' },
+  inputError: { borderColor: 'var(--danger)' },
+  errorMsg: { fontSize: 11, color: 'var(--danger)', marginTop: 4 },
+  warnMsg: { fontSize: 11, color: '#f59e0b', marginTop: 4 },
+  row: { display: 'flex', gap: 8, alignItems: 'flex-start' },
+  browseBtn: { flexShrink: 0, background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, padding: '8px 12px', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'DM Sans, sans-serif' },
 }
 
 function normalizeExt(raw) {
@@ -67,43 +19,9 @@ function normalizeExt(raw) {
 
 function Toggle({ value, onChange, label }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      style={{
-        display:    'flex',
-        alignItems: 'center',
-        gap:        10,
-        background: 'none',
-        border:     'none',
-        cursor:     'pointer',
-        padding:    0,
-        color:      'var(--text-primary)',
-        fontFamily: 'DM Sans, sans-serif',
-        fontSize:   13,
-      }}
-    >
-      <span style={{
-        width:        40,
-        height:       22,
-        borderRadius: 99,
-        background:   value ? 'var(--accent)' : 'var(--bg-overlay)',
-        border:       '1px solid var(--border-default)',
-        position:     'relative',
-        transition:   'background 0.2s',
-        flexShrink:   0,
-      }}>
-        <span style={{
-          position:     'absolute',
-          top:          2,
-          left:         value ? 20 : 2,
-          width:        16,
-          height:       16,
-          borderRadius: '50%',
-          background:   '#fff',
-          transition:   'left 0.18s',
-          boxShadow:    '0 1px 3px rgba(0,0,0,0.3)',
-        }} />
+    <button type="button" onClick={() => onChange(!value)} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-primary)', fontFamily: 'DM Sans, sans-serif', fontSize: 13 }}>
+      <span style={{ width: 40, height: 22, borderRadius: 99, background: value ? 'var(--accent)' : 'var(--bg-overlay)', border: '1px solid var(--border-default)', position: 'relative', flexShrink: 0 }}>
+        <span style={{ position: 'absolute', top: 2, left: value ? 20 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.18s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
       </span>
       {label}
     </button>
@@ -112,23 +30,7 @@ function Toggle({ value, onChange, label }) {
 
 function OptionCard({ active, title, desc, onClick }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex:          1,
-        padding:       '10px 12px',
-        borderRadius:  'var(--radius)',
-        border:        active ? '1.5px solid var(--accent)' : '1px solid var(--border-default)',
-        background:    active ? 'var(--accent-muted)' : 'var(--bg-overlay)',
-        color:         active ? 'var(--accent)' : 'var(--text-secondary)',
-        cursor:        'pointer',
-        textAlign:     'left',
-        fontFamily:    'DM Sans, sans-serif',
-        transition:    'all 0.15s',
-        minWidth:      0,
-      }}
-    >
+    <button type="button" onClick={onClick} style={{ flex: 1, padding: '10px 12px', borderRadius: 'var(--radius)', border: active ? '1.5px solid var(--accent)' : '1px solid var(--border-default)', background: active ? 'var(--accent-muted)' : 'var(--bg-overlay)', color: active ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', textAlign: 'left', fontFamily: 'DM Sans, sans-serif', minWidth: 0 }}>
       <div style={{ fontSize: 13, fontWeight: 600 }}>{title}</div>
       <div style={{ fontSize: 11, marginTop: 3, opacity: 0.75, lineHeight: 1.45 }}>{desc}</div>
     </button>
@@ -137,61 +39,55 @@ function OptionCard({ active, title, desc, onClick }) {
 
 function buildDefault() {
   return {
-    id:               '',
-    name:             '',
-    watchFolder:      '',
-    filters: {
-      extensions:  [],
-      namePattern: '',
-    },
-    action:           'move',
-    destination:      '',
-    organizeBy:       'category', // 'category' | 'extension' | 'none'
-    destinationBase:  'custom',   // 'custom' | 'source'
+    id: '',
+    name: '',
+    watchFolder: '',
+    filters: { extensions: [], namePattern: '' },
+    action: 'move',
+    destination: '',
+    organizeBy: 'category',
+    destinationBase: 'custom',
     autoCreateFolder: true,
-    isActive:         true,
+    isActive: true,
   }
 }
 
 export default function RuleBuilder({ rule = null, onSave, onCancel }) {
   const [form, setForm] = useState(() => {
-    if (rule) {
-      return {
-        ...buildDefault(),
-        ...rule,
-        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
-        destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
-        filters: {
-          extensions:  rule.filters?.extensions  ?? [],
-          namePattern: rule.filters?.namePattern ?? '',
-        },
-      }
+    if (!rule) return buildDefault()
+    return {
+      ...buildDefault(),
+      ...rule,
+      organizeBy: rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
+      destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
+      filters: {
+        extensions: rule.filters?.extensions ?? [],
+        namePattern: rule.filters?.namePattern ?? '',
+      },
     }
-    return buildDefault()
   })
 
   const [extInput, setExtInput] = useState('')
   const [extError, setExtError] = useState('')
-  const extInputRef = useRef(null)
-
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
+  const extInputRef = useRef(null)
   const ipcAvailable = typeof window.automover !== 'undefined'
 
   useEffect(() => {
-    if (rule) {
+    if (!rule) {
+      setForm(buildDefault())
+    } else {
       setForm({
         ...buildDefault(),
         ...rule,
-        organizeBy:      rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
+        organizeBy: rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
         destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
         filters: {
-          extensions:  rule.filters?.extensions  ?? [],
+          extensions: rule.filters?.extensions ?? [],
           namePattern: rule.filters?.namePattern ?? '',
         },
       })
-    } else {
-      setForm(buildDefault())
     }
     setErrors({})
     setExtInput('')
@@ -204,39 +100,25 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
   }, [])
 
   const setFilter = useCallback((key, value) => {
-    setForm(prev => ({
-      ...prev,
-      filters: { ...prev.filters, [key]: value },
-    }))
+    setForm(prev => ({ ...prev, filters: { ...prev.filters, [key]: value } }))
   }, [])
 
   const browseFolder = useCallback(async (fieldKey) => {
     if (!ipcAvailable) return
-    const path = await window.automover.dialog.selectFolder()
-    if (path) setField(fieldKey, path)
+    const selected = await window.automover.dialog.selectFolder()
+    if (selected) setField(fieldKey, selected)
   }, [ipcAvailable, setField])
 
   const setOrganizeBy = (value) => {
-    setForm(prev => ({
-      ...prev,
-      organizeBy: value,
-      destinationBase: value === 'none' ? 'custom' : prev.destinationBase,
-    }))
-    setErrors(prev => ({ ...prev, destination: undefined }))
+    setForm(prev => ({ ...prev, organizeBy: value, destinationBase: value === 'none' ? 'custom' : prev.destinationBase }))
+    setErrors(prev => ({ ...prev, destination: undefined, namePattern: undefined }))
   }
 
   const addExt = useCallback(() => {
     const ext = normalizeExt(extInput)
     if (!ext) { setExtInput(''); return }
-
-    if (!/^\.[a-zA-Z0-9]+$/.test(ext)) {
-      setExtError('Format tidak valid. Contoh: .pdf')
-      return
-    }
-    if (form.filters.extensions.includes(ext)) {
-      setExtError('Ekstensi sudah ditambahkan')
-      return
-    }
+    if (!/^\.[a-zA-Z0-9]+$/.test(ext)) { setExtError('Format tidak valid. Contoh: .pdf'); return }
+    if (form.filters.extensions.includes(ext)) { setExtError('Ekstensi sudah ditambahkan'); return }
     setFilter('extensions', [...form.filters.extensions, ext])
     setExtInput('')
     setExtError('')
@@ -247,10 +129,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
   }, [form.filters.extensions, setFilter])
 
   const handleExtKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      addExt()
-    }
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addExt() }
     if (e.key === 'Backspace' && extInput === '' && form.filters.extensions.length > 0) {
       setFilter('extensions', form.filters.extensions.slice(0, -1))
     }
@@ -259,110 +138,66 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
   const validate = () => {
     const errs = {}
     if (!form.watchFolder.trim()) errs.watchFolder = 'Folder sumber wajib diisi'
+    if (form.organizeBy === 'name' && !form.filters.namePattern.trim()) errs.namePattern = 'Filter nama wajib diisi untuk mode berdasarkan nama'
 
     const needsCustomDestination = form.destinationBase !== 'source'
-    if (needsCustomDestination && !form.destination.trim()) {
-      errs.destination = 'Folder tujuan wajib diisi'
-    }
+    if (needsCustomDestination && !form.destination.trim()) errs.destination = 'Folder tujuan wajib diisi'
 
-    if (
-      needsCustomDestination &&
-      form.organizeBy === 'none' &&
-      form.watchFolder.trim() &&
-      form.destination.trim() &&
-      form.watchFolder.trim() === form.destination.trim()
-    ) {
+    if (needsCustomDestination && form.organizeBy === 'none' && form.watchFolder.trim() && form.destination.trim() && form.watchFolder.trim() === form.destination.trim()) {
       errs.destination = 'Folder tujuan tetap tidak boleh sama dengan folder sumber'
     }
-
     return errs
   }
 
-  const noFiltersWarning =
-    form.filters.extensions.length === 0 && !form.filters.namePattern.trim()
-
   const handleSave = async () => {
     const errs = validate()
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs)
-      return
-    }
+    if (Object.keys(errs).length > 0) { setErrors(errs); return }
     setSaving(true)
     try {
-      const finalRule = {
+      await onSave({
         ...form,
-        id:              form.id || uuidv4(),
-        name:            form.name.trim(),
-        watchFolder:     form.watchFolder.trim(),
-        destination:     form.destinationBase === 'source' ? '' : form.destination.trim(),
-        organizeBy:      form.organizeBy,
+        id: form.id || uuidv4(),
+        name: form.name.trim(),
+        watchFolder: form.watchFolder.trim(),
+        destination: form.destinationBase === 'source' ? '' : form.destination.trim(),
+        organizeBy: form.organizeBy,
         destinationBase: form.destinationBase,
         filters: {
-          extensions:  form.filters.extensions,
+          extensions: form.filters.extensions,
           namePattern: form.filters.namePattern.trim(),
         },
-      }
-      await onSave(finalRule)
+      })
     } finally {
       setSaving(false)
     }
   }
 
   const customDestinationRequired = form.destinationBase !== 'source'
-  const isGroupedMode = form.organizeBy === 'extension' || form.organizeBy === 'category'
-  const groupLabel = form.organizeBy === 'category' ? 'kategori' : 'ekstensi'
+  const isGroupedMode = ['category', 'extension', 'name'].includes(form.organizeBy)
+  const groupLabel = form.organizeBy === 'category' ? 'kategori' : form.organizeBy === 'extension' ? 'ekstensi' : 'nama file'
+  const noFiltersWarning = form.filters.extensions.length === 0 && !form.filters.namePattern.trim()
 
   return (
-    <div style={{
-      display:        'flex',
-      flexDirection:  'column',
-      height:         '100%',
-      background:     'var(--bg-surface)',
-      borderLeft:     '1px solid var(--border-subtle)',
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-surface)', borderLeft: '1px solid var(--border-subtle)' }}>
       <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-        <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0 }}>
-          {rule ? 'Edit Aturan' : 'Buat Aturan Baru'}
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
-          {rule ? `Mengedit: ${rule.name || rule.id}` : 'Tentukan kondisi dan tindakan sortir file'}
-        </p>
+        <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, margin: 0 }}>{rule ? 'Edit Aturan' : 'Buat Aturan Baru'}</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>{rule ? `Mengedit: ${rule.name || rule.id}` : 'Tentukan kondisi dan tindakan sortir file'}</p>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
           <div>
             <label style={S.label}>Nama Aturan <span style={{ color: 'var(--text-muted)', textTransform: 'none', fontWeight: 400 }}>(opsional)</span></label>
-            <input
-              style={S.input}
-              type="text"
-              value={form.name}
-              onChange={e => setField('name', e.target.value)}
-              placeholder="Contoh: Rapikan folder Downloads"
-            />
+            <input style={S.input} type="text" value={form.name} onChange={e => setField('name', e.target.value)} placeholder="Contoh: Foto SANOB" />
           </div>
 
           <div>
             <label style={S.label}>Folder Sumber <span style={{ color: 'var(--danger)' }}>*</span></label>
             <div style={S.row}>
               <div style={{ flex: 1 }}>
-                <input
-                  style={{ ...S.input, ...(errors.watchFolder ? S.inputError : {}) }}
-                  type="text"
-                  value={form.watchFolder}
-                  onChange={e => setField('watchFolder', e.target.value)}
-                  placeholder="C:\\Users\\Name\\Downloads"
-                />
+                <input style={{ ...S.input, ...(errors.watchFolder ? S.inputError : {}) }} type="text" value={form.watchFolder} onChange={e => setField('watchFolder', e.target.value)} placeholder="C:\\Users\\Name\\Downloads" />
               </div>
-              <button
-                type="button"
-                style={{ ...S.browseBtn, opacity: ipcAvailable ? 1 : 0.4, cursor: ipcAvailable ? 'pointer' : 'not-allowed' }}
-                onClick={() => browseFolder('watchFolder')}
-                disabled={!ipcAvailable}
-              >
-                📂 Browse
-              </button>
+              <button type="button" style={{ ...S.browseBtn, opacity: ipcAvailable ? 1 : 0.4, cursor: ipcAvailable ? 'pointer' : 'not-allowed' }} onClick={() => browseFolder('watchFolder')} disabled={!ipcAvailable}>📂 Browse</button>
             </div>
             {errors.watchFolder && <p style={S.errorMsg}>{errors.watchFolder}</p>}
           </div>
@@ -372,101 +207,50 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
           <div>
             <label style={S.label}>Mode Tujuan</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-              <OptionCard
-                active={form.organizeBy === 'category'}
-                title="Smart Category"
-                desc="Kelompokkan otomatis ke Documents, Images, Videos, Audio, Archives, Installers, Code, Fonts, dan Others."
-                onClick={() => setOrganizeBy('category')}
-              />
+              <OptionCard active={form.organizeBy === 'category'} title="Smart Category" desc="Kelompokkan otomatis ke Documents, Images, Videos, Audio, Archives, Installers, Code, Fonts, dan Others." onClick={() => setOrganizeBy('category')} />
+              <OptionCard active={form.organizeBy === 'name'} title="Berdasarkan nama file" desc="Filter nama menjadi nama folder. Contoh: SANOB → folder SANOB." onClick={() => setOrganizeBy('name')} />
               <div style={{ display: 'flex', gap: 8 }}>
-                <OptionCard
-                  active={form.organizeBy === 'extension'}
-                  title="Berdasarkan ekstensi"
-                  desc="Membuat/memakai subfolder pdf, docx, jpg, dan sejenisnya."
-                  onClick={() => setOrganizeBy('extension')}
-                />
-                <OptionCard
-                  active={form.organizeBy === 'none'}
-                  title="Folder tetap"
-                  desc="File yang cocok masuk langsung ke satu folder tujuan."
-                  onClick={() => setOrganizeBy('none')}
-                />
+                <OptionCard active={form.organizeBy === 'extension'} title="Berdasarkan ekstensi" desc="Membuat/memakai subfolder pdf, docx, jpg, dan sejenisnya." onClick={() => setOrganizeBy('extension')} />
+                <OptionCard active={form.organizeBy === 'none'} title="Folder tetap" desc="File yang cocok masuk langsung ke satu folder tujuan." onClick={() => setOrganizeBy('none')} />
               </div>
             </div>
           </div>
 
           {isGroupedMode && (
             <div>
-              <label style={S.label}>Lokasi Subfolder {form.organizeBy === 'category' ? 'Kategori' : 'Ekstensi'}</label>
+              <label style={S.label}>Lokasi Subfolder {groupLabel}</label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <OptionCard
-                  active={form.destinationBase === 'custom'}
-                  title="Di folder tujuan"
-                  desc={form.organizeBy === 'category' ? 'Contoh: D:/Rapi/Documents, D:/Rapi/Images.' : 'Contoh: D:/Rapi/pdf, D:/Rapi/docx.'}
-                  onClick={() => setField('destinationBase', 'custom')}
-                />
-                <OptionCard
-                  active={form.destinationBase === 'source'}
-                  title="Di folder sumber"
-                  desc={form.organizeBy === 'category' ? 'Contoh: Downloads/Documents, Downloads/Images.' : 'Contoh: Downloads/pdf, Downloads/docx.'}
-                  onClick={() => setField('destinationBase', 'source')}
-                />
+                <OptionCard active={form.destinationBase === 'custom'} title="Di folder tujuan" desc={`Subfolder ${groupLabel} dibuat/dipakai di folder tujuan.`} onClick={() => setField('destinationBase', 'custom')} />
+                <OptionCard active={form.destinationBase === 'source'} title="Di folder sumber" desc={`Subfolder ${groupLabel} dibuat/dipakai di folder sumber.`} onClick={() => setField('destinationBase', 'source')} />
               </div>
             </div>
           )}
 
           {customDestinationRequired && (
             <div>
-              <label style={S.label}>
-                {isGroupedMode ? 'Folder Tujuan Induk' : 'Folder Tujuan Tetap'} <span style={{ color: 'var(--danger)' }}>*</span>
-              </label>
+              <label style={S.label}>{isGroupedMode ? 'Folder Tujuan Induk' : 'Folder Tujuan Tetap'} <span style={{ color: 'var(--danger)' }}>*</span></label>
               <div style={S.row}>
                 <div style={{ flex: 1 }}>
-                  <input
-                    style={{ ...S.input, ...(errors.destination ? S.inputError : {}) }}
-                    type="text"
-                    value={form.destination}
-                    onChange={e => setField('destination', e.target.value)}
-                    placeholder="C:\\Users\\Name\\Documents\\Rapi"
-                  />
+                  <input style={{ ...S.input, ...(errors.destination ? S.inputError : {}) }} type="text" value={form.destination} onChange={e => setField('destination', e.target.value)} placeholder="C:\\Users\\Name\\Documents\\Rapi" />
                 </div>
-                <button
-                  type="button"
-                  style={{ ...S.browseBtn, opacity: ipcAvailable ? 1 : 0.4, cursor: ipcAvailable ? 'pointer' : 'not-allowed' }}
-                  onClick={() => browseFolder('destination')}
-                  disabled={!ipcAvailable}
-                >
-                  📂 Browse
-                </button>
+                <button type="button" style={{ ...S.browseBtn, opacity: ipcAvailable ? 1 : 0.4, cursor: ipcAvailable ? 'pointer' : 'not-allowed' }} onClick={() => browseFolder('destination')} disabled={!ipcAvailable}>📂 Browse</button>
               </div>
               {errors.destination && <p style={S.errorMsg}>{errors.destination}</p>}
-              {isGroupedMode && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
-                  Subfolder {groupLabel} akan dibuat di dalam folder ini. Folder yang sudah ada akan langsung dipakai.
-                </p>
-              )}
+              {isGroupedMode && <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>Subfolder {groupLabel} akan dibuat di dalam folder ini. Folder yang sudah ada akan langsung dipakai.</p>}
             </div>
           )}
 
-          {isGroupedMode && form.destinationBase === 'source' && (
+          {form.destinationBase === 'source' && isGroupedMode && (
             <div style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius)' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                Folder tujuan mengikuti folder sumber
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>
-                File akan dipindahkan ke subfolder dalam folder sumber. Folder lama yang namanya sama akan langsung dipakai.
-              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Folder tujuan mengikuti folder sumber</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>File akan dipindahkan ke subfolder dalam folder sumber. Folder lama yang namanya sama akan langsung dipakai.</div>
             </div>
           )}
 
-          {form.organizeBy === 'category' && (
+          {form.organizeBy === 'name' && (
             <div style={{ padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius)' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                Kategori bawaan
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.6 }}>
-                Documents, Images, Videos, Audio, Archives, Installers, Code, Fonts, dan Others.
-              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Contoh mode nama file</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.6 }}>Filter nama <b>SANOB</b> akan mencocokkan SANOB-ESA-49.jpg dan membuat/memakai folder <b>SANOB</b>.</div>
             </div>
           )}
 
@@ -474,77 +258,25 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
 
           <div>
             <label style={S.label}>Filter Ekstensi</label>
-            <div
-              style={{
-                display:      'flex',
-                flexWrap:     'wrap',
-                gap:          6,
-                background:   'var(--bg-overlay)',
-                border:       '1px solid var(--border-default)',
-                borderRadius: 'var(--radius)',
-                padding:      '6px 8px',
-                cursor:       'text',
-                minHeight:    40,
-                alignItems:   'center',
-              }}
-              onClick={() => extInputRef.current?.focus()}
-            >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius)', padding: '6px 8px', cursor: 'text', minHeight: 40, alignItems: 'center' }} onClick={() => extInputRef.current?.focus()}>
               {form.filters.extensions.map(ext => (
-                <span key={ext} style={{
-                  display:      'flex',
-                  alignItems:   'center',
-                  gap:          4,
-                  background:   'var(--accent-muted)',
-                  border:       '1px solid var(--accent-border)',
-                  color:        'var(--accent)',
-                  borderRadius: 4,
-                  fontSize:     11,
-                  fontWeight:   600,
-                  padding:      '2px 6px',
-                  fontFamily:   'JetBrains Mono, monospace',
-                  userSelect:   'none',
-                }}>
+                <span key={ext} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--accent-muted)', border: '1px solid var(--accent-border)', color: 'var(--accent)', borderRadius: 4, fontSize: 11, fontWeight: 600, padding: '2px 6px', fontFamily: 'JetBrains Mono, monospace', userSelect: 'none' }}>
                   {ext}
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); removeExt(ext) }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: '0 1px', lineHeight: 1, fontSize: 12 }}
-                    title={`Hapus ${ext}`}
-                  >×</button>
+                  <button type="button" onClick={e => { e.stopPropagation(); removeExt(ext) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: '0 1px', lineHeight: 1, fontSize: 12 }} title={`Hapus ${ext}`}>×</button>
                 </span>
               ))}
-              <input
-                ref={extInputRef}
-                style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace', minWidth: 80, flex: 1, userSelect: 'text' }}
-                type="text"
-                value={extInput}
-                onChange={e => { setExtInput(e.target.value); setExtError('') }}
-                onKeyDown={handleExtKeyDown}
-                onBlur={addExt}
-                placeholder={form.filters.extensions.length === 0 ? '.pdf, .docx, .png...' : ''}
-              />
+              <input ref={extInputRef} style={{ background: 'none', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace', minWidth: 80, flex: 1, userSelect: 'text' }} type="text" value={extInput} onChange={e => { setExtInput(e.target.value); setExtError('') }} onKeyDown={handleExtKeyDown} onBlur={addExt} placeholder={form.filters.extensions.length === 0 ? '.pdf, .docx, .png...' : ''} />
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
-              Ketik ekstensi lalu tekan Enter atau koma. Biarkan kosong untuk semua tipe file.
-            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>Ketik ekstensi lalu tekan Enter atau koma. Biarkan kosong untuk semua tipe file.</p>
             {extError && <p style={S.errorMsg}>{extError}</p>}
           </div>
 
           <div>
-            <label style={S.label}>Filter Nama File</label>
-            <input
-              style={S.input}
-              type="text"
-              value={form.filters.namePattern}
-              onChange={e => setFilter('namePattern', e.target.value)}
-              placeholder="Invoice_*  atau  Report_2024*"
-            />
-            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
-              Gunakan * sebagai wildcard. Biarkan kosong untuk tidak memfilter nama.
-            </p>
-            {noFiltersWarning && (
-              <p style={S.warnMsg}>⚠️ Tidak ada filter aktif — semua file di folder sumber akan diproses</p>
-            )}
+            <label style={S.label}>Filter Nama File {form.organizeBy === 'name' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+            <input style={{ ...S.input, ...(errors.namePattern ? S.inputError : {}) }} type="text" value={form.filters.namePattern} onChange={e => setFilter('namePattern', e.target.value)} placeholder="SANOB atau Invoice_* atau SANOB,ESA" />
+            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>Tanpa wildcard, teks dianggap sebagai “mengandung kata”. Contoh: SANOB cocok dengan SANOB-ESA-49.jpg.</p>
+            {errors.namePattern && <p style={S.errorMsg}>{errors.namePattern}</p>}
+            {noFiltersWarning && <p style={S.warnMsg}>⚠️ Tidak ada filter aktif — semua file di folder sumber akan diproses</p>}
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '0 -4px' }} />
@@ -552,79 +284,28 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
           <div>
             <label style={S.label}>Tindakan</label>
             <div style={{ display: 'flex', gap: 8 }}>
-              <OptionCard
-                active={form.action === 'move'}
-                title="✂️ Pindahkan (Move)"
-                desc="File dihapus dari sumber."
-                onClick={() => setField('action', 'move')}
-              />
-              <OptionCard
-                active={form.action === 'copy'}
-                title="📋 Salin (Copy)"
-                desc="File tetap di sumber."
-                onClick={() => setField('action', 'copy')}
-              />
+              <OptionCard active={form.action === 'move'} title="✂️ Pindahkan (Move)" desc="File dihapus dari sumber." onClick={() => setField('action', 'move')} />
+              <OptionCard active={form.action === 'copy'} title="📋 Salin (Copy)" desc="File tetap di sumber." onClick={() => setField('action', 'copy')} />
             </div>
           </div>
 
-          <div style={{
-            display:      'flex',
-            alignItems:   'center',
-            gap:          12,
-            padding:      '12px 14px',
-            background:   'var(--bg-elevated)',
-            borderRadius: 'var(--radius)',
-            border:       '1px solid var(--border-subtle)',
-          }}>
-            <input
-              id="autoCreate"
-              type="checkbox"
-              checked={form.autoCreateFolder}
-              onChange={e => setField('autoCreateFolder', e.target.checked)}
-              style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', border: '1px solid var(--border-subtle)' }}>
+            <input id="autoCreate" type="checkbox" checked={form.autoCreateFolder} onChange={e => setField('autoCreateFolder', e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }} />
             <label htmlFor="autoCreate" style={{ cursor: 'pointer', userSelect: 'none' }}>
               <span style={{ fontSize: 13, fontWeight: 500 }}>Buat folder otomatis</span>
-              <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                Jika folder tujuan atau subfolder belum ada, buat secara otomatis. Jika sudah ada, folder itu akan dipakai.
-              </span>
+              <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Jika folder tujuan atau subfolder belum ada, buat secara otomatis. Jika sudah ada, folder itu akan dipakai.</span>
             </label>
           </div>
 
           <div style={{ padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', border: '1px solid var(--border-subtle)' }}>
-            <Toggle
-              value={form.isActive}
-              onChange={v => setField('isActive', v)}
-              label={
-                <span>
-                  <span style={{ fontWeight: 500 }}>Aturan aktif</span>
-                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                    {form.isActive ? 'Aturan ini akan berjalan saat monitoring aktif' : 'Aturan ini dinonaktifkan'}
-                  </span>
-                </span>
-              }
-            />
+            <Toggle value={form.isActive} onChange={v => setField('isActive', v)} label={<span><span style={{ fontWeight: 500 }}>Aturan aktif</span><span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{form.isActive ? 'Aturan ini akan berjalan saat monitoring aktif' : 'Aturan ini dinonaktifkan'}</span></span>} />
           </div>
         </div>
       </div>
 
       <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8, flexShrink: 0, background: 'var(--bg-surface)' }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          style={{ flex: 1, padding: '9px 0', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-        >
-          Batal
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          style={{ flex: 2, padding: '9px 0', borderRadius: 'var(--radius)', border: 'none', background: saving ? 'var(--accent-muted)' : 'var(--accent)', color: saving ? 'var(--accent)' : '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'background 0.15s' }}
-        >
-          {saving ? 'Menyimpan...' : rule ? '✓ Simpan Perubahan' : '+ Simpan Aturan'}
-        </button>
+        <button type="button" onClick={onCancel} disabled={saving} style={{ flex: 1, padding: '9px 0', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Batal</button>
+        <button type="button" onClick={handleSave} disabled={saving} style={{ flex: 2, padding: '9px 0', borderRadius: 'var(--radius)', border: 'none', background: saving ? 'var(--accent-muted)' : 'var(--accent)', color: saving ? 'var(--accent)' : '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>{saving ? 'Menyimpan...' : rule ? '✓ Simpan Perubahan' : '+ Simpan Aturan'}</button>
       </div>
     </div>
   )
