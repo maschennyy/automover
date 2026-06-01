@@ -103,26 +103,34 @@ function getExtensionFolderName(fileName) {
   return safeFolderName(ext || 'no-extension')
 }
 
-function shouldOrganizeByExtension(rule) {
+function getOrganizeMode(rule) {
   const mode = rule.organizeBy || rule.groupBy || rule.destinationMode
-  if (mode === 'none' || mode === 'single-folder' || mode === 'direct') return false
-  if (mode === 'extension' || mode === 'by-extension') return true
+  if (mode === 'none' || mode === 'single-folder' || mode === 'direct') return 'none'
+  if (mode === 'extension' || mode === 'by-extension') return 'extension'
+  return 'extension'
+}
 
-  // Backward-compatible default for this app's purpose:
-  // destination is treated as the parent folder and files are grouped by extension.
-  return true
+function getDestinationBaseDir(sourcePath, destinationRoot, rule) {
+  const sourceFolder = path.dirname(sourcePath)
+  const baseMode = rule.destinationBase || rule.destinationRoot || 'custom'
+
+  if (baseMode === 'source' || baseMode === 'watch-folder') return sourceFolder
+
+  const root = destinationRoot || rule.destination
+  if (!root) throw new Error('Folder tujuan belum diisi')
+  return root
 }
 
 function resolveRuleDestinationDir(sourcePath, destinationRoot, rule) {
   const fileName = path.basename(sourcePath)
-  const root = destinationRoot || rule.destination
-  if (!root) throw new Error('Folder tujuan belum diisi')
+  const baseDir = getDestinationBaseDir(sourcePath, destinationRoot, rule)
+  const organizeMode = getOrganizeMode(rule)
 
-  if (shouldOrganizeByExtension(rule)) {
-    return path.join(root, getExtensionFolderName(fileName))
+  if (organizeMode === 'extension') {
+    return path.join(baseDir, getExtensionFolderName(fileName))
   }
 
-  return root
+  return baseDir
 }
 
 function validateSourceFile(sourcePath) {
