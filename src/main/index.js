@@ -86,6 +86,23 @@ const store = new Store({
 let mainWindow = null
 let tray       = null
 
+// ─── Persistent log helper ────────────────────────────────────────────────────
+function persistLogEntry(logEntry) {
+  if (!logEntry || !logEntry.id) return { success: false, error: 'Invalid log entry' }
+
+  const logs = store.get('logs')
+  const alreadyExists = logs.some(l => l.id === logEntry.id)
+  if (!alreadyExists) logs.unshift(logEntry)
+
+  if (logs.length > 500) logs.splice(500)
+  store.set('logs', logs)
+  return { success: true, logs }
+}
+
+watcherManager.setLogHandler((logEntry) => {
+  persistLogEntry(logEntry)
+})
+
 // ─── Tray icon helper ─────────────────────────────────────────────────────────
 function loadTrayIcon() {
   // In dev/production look for the PNG in the assets folder next to the built main.
@@ -132,7 +149,7 @@ function buildTrayMenu() {
     // Monitor status indicator
     {
       label:   isMonitoring
-        ? `● Memantau ${watcherManager.watchingFolders.size} folder`
+        ? `● Memantau ${watcherManager.watchers.size} folder`
         : '○ Monitoring Nonaktif',
       enabled: false,
     },
@@ -171,10 +188,7 @@ function buildTrayMenu() {
           try {
             const result = scanAndSort(folder, activeRules)
             for (const logEntry of result.success) {
-              const logs = store.get('logs')
-              logs.unshift(logEntry)
-              if (logs.length > 500) logs.splice(500)
-              store.set('logs', logs)
+              persistLogEntry(logEntry)
               safeSendToRenderer('watcher:fileProcessed', logEntry)
             }
           } catch (err) {
@@ -380,10 +394,7 @@ ipcMain.handle('watcher:runNow', async () => {
       allResults.errors.push(...result.errors)
 
       for (const logEntry of result.success) {
-        const logs = store.get('logs')
-        logs.unshift(logEntry)
-        if (logs.length > 500) logs.splice(500)
-        store.set('logs', logs)
+        persistLogEntry(logEntry)
         safeSendToRenderer('watcher:fileProcessed', logEntry)
       }
     } catch (err) {
@@ -396,13 +407,7 @@ ipcMain.handle('watcher:runNow', async () => {
 // ─── IPC Handlers: Logs ──────────────────────────────────────────────────────
 ipcMain.handle('logs:getAll', () => store.get('logs'))
 
-ipcMain.handle('logs:add', (_event, logEntry) => {
-  const logs = store.get('logs')
-  logs.unshift(logEntry)
-  if (logs.length > 500) logs.splice(500)
-  store.set('logs', logs)
-  return { success: true }
-})
+ipcMain.handle('logs:add', (_event, logEntry) => persistLogEntry(logEntry))
 
 ipcMain.handle('logs:markUndone', (_event, logId) => {
   const logs  = store.get('logs')
