@@ -22,6 +22,38 @@ function getMicromatch() {
   return _micromatch
 }
 
+const CATEGORY_MAP = {
+  Documents: [
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx',
+    'txt', 'rtf', 'odt', 'ods', 'odp', 'md', 'epub', 'mobi',
+  ],
+  Images: [
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif',
+    'svg', 'heic', 'ico', 'raw', 'psd', 'ai',
+  ],
+  Videos: [
+    'mp4', 'mkv', 'mov', 'avi', 'wmv', 'flv', 'webm', 'm4v',
+    '3gp', 'mpeg', 'mpg',
+  ],
+  Audio: [
+    'mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg', 'wma', 'amr',
+  ],
+  Archives: [
+    'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso',
+  ],
+  Installers: [
+    'exe', 'msi', 'apk', 'dmg', 'pkg', 'deb', 'rpm', 'appx',
+  ],
+  Code: [
+    'js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'cpp', 'cs',
+    'php', 'rb', 'go', 'rs', 'html', 'css', 'scss', 'json',
+    'xml', 'yaml', 'yml', 'sql', 'sh', 'bat', 'ps1',
+  ],
+  Fonts: [
+    'ttf', 'otf', 'woff', 'woff2', 'eot',
+  ],
+}
+
 function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 }
@@ -98,14 +130,29 @@ function safeFolderName(name) {
     .slice(0, 80) || 'unknown'
 }
 
+function getFileExtension(fileName) {
+  return path.extname(fileName).replace(/^\./, '').toLowerCase()
+}
+
 function getExtensionFolderName(fileName) {
-  const ext = path.extname(fileName).replace(/^\./, '').toLowerCase()
-  return safeFolderName(ext || 'no-extension')
+  return safeFolderName(getFileExtension(fileName) || 'no-extension')
+}
+
+function getCategoryFolderName(fileName) {
+  const ext = getFileExtension(fileName)
+  if (!ext) return 'Others'
+
+  for (const [category, extensions] of Object.entries(CATEGORY_MAP)) {
+    if (extensions.includes(ext)) return category
+  }
+
+  return 'Others'
 }
 
 function getOrganizeMode(rule) {
   const mode = rule.organizeBy || rule.groupBy || rule.destinationMode
   if (mode === 'none' || mode === 'single-folder' || mode === 'direct') return 'none'
+  if (mode === 'category' || mode === 'smart-category' || mode === 'by-category') return 'category'
   if (mode === 'extension' || mode === 'by-extension') return 'extension'
   return 'extension'
 }
@@ -125,6 +172,10 @@ function resolveRuleDestinationDir(sourcePath, destinationRoot, rule) {
   const fileName = path.basename(sourcePath)
   const baseDir = getDestinationBaseDir(sourcePath, destinationRoot, rule)
   const organizeMode = getOrganizeMode(rule)
+
+  if (organizeMode === 'category') {
+    return path.join(baseDir, getCategoryFolderName(fileName))
+  }
 
   if (organizeMode === 'extension') {
     return path.join(baseDir, getExtensionFolderName(fileName))
@@ -343,10 +394,12 @@ function undoAction(logEntry) {
 }
 
 module.exports = {
+  CATEGORY_MAP,
   createDirectoryIfNotExists,
   resolveDestinationPath,
   resolveRuleDestinationDir,
   getExtensionFolderName,
+  getCategoryFolderName,
   moveFile,
   copyFile,
   matchesRule,
