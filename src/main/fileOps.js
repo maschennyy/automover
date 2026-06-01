@@ -149,9 +149,42 @@ function getCategoryFolderName(fileName) {
   return 'Others'
 }
 
+function hasGlobSyntax(pattern) {
+  return /[*?\[\]{}()!+@]/.test(pattern)
+}
+
+function getNamePatterns(rule) {
+  const raw = rule.filters?.namePattern
+  if (Array.isArray(raw)) return raw.map(v => String(v).trim()).filter(Boolean)
+  if (typeof raw !== 'string') return []
+
+  return raw
+    .split(',')
+    .map(v => v.trim())
+    .filter(Boolean)
+}
+
+function getNameFolderName(rule) {
+  const folderName = rule.nameFolder || rule.nameFolderName || rule.folderNameFromPattern
+  if (typeof folderName === 'string' && folderName.trim()) {
+    return safeFolderName(folderName.trim())
+  }
+
+  const firstPattern = getNamePatterns(rule)[0]
+  if (!firstPattern) return 'Matched-Name'
+
+  return safeFolderName(
+    firstPattern
+      .replace(/[*?]/g, '')
+      .replace(/^\.+|\.+$/g, '')
+      .trim()
+  )
+}
+
 function getOrganizeMode(rule) {
   const mode = rule.organizeBy || rule.groupBy || rule.destinationMode
   if (mode === 'none' || mode === 'single-folder' || mode === 'direct') return 'none'
+  if (mode === 'name' || mode === 'name-pattern' || mode === 'by-name' || mode === 'filter-name') return 'name'
   if (mode === 'category' || mode === 'smart-category' || mode === 'by-category') return 'category'
   if (mode === 'extension' || mode === 'by-extension') return 'extension'
   return 'extension'
@@ -172,6 +205,10 @@ function resolveRuleDestinationDir(sourcePath, destinationRoot, rule) {
   const fileName = path.basename(sourcePath)
   const baseDir = getDestinationBaseDir(sourcePath, destinationRoot, rule)
   const organizeMode = getOrganizeMode(rule)
+
+  if (organizeMode === 'name') {
+    return path.join(baseDir, getNameFolderName(rule))
+  }
 
   if (organizeMode === 'category') {
     return path.join(baseDir, getCategoryFolderName(fileName))
@@ -258,11 +295,36 @@ function copyFile(sourcePath, destinationDir, rule) {
   }
 }
 
+function matchesNamePattern(fileName, pattern) {
+  const trimmed = String(pattern || '').trim()
+  if (!trimmed) return true
+
+  const lowerFileName = fileName.toLowerCase()
+  const lowerPattern = trimmed.toLowerCase()
+
+  // User-friendly default: "SANOB" means filename contains "SANOB".
+  if (!hasGlobSyntax(trimmed)) {
+    return lowerFileName.includes(lowerPattern)
+  }
+
+  const mm = getMicromatch()
+  if (mm) {
+    return mm.isMatch(lowerFileName, lowerPattern, {
+      nocase:  true,
+      dot:     true,
+      windows: true,
+    })
+  }
+
+  return _globMatch(fileName, trimmed)
+}
+
 function matchesRule(fileName, rule) {
   const filters = rule.filters || {}
 
   const hasExtFilter     = Array.isArray(filters.extensions) && filters.extensions.length > 0
-  const hasPatternFilter = typeof filters.namePattern === 'string' && filters.namePattern.trim() !== ''
+  const namePatterns     = getNamePatterns(rule)
+  const hasPatternFilter = namePatterns.length > 0
 
   if (!hasExtFilter && !hasPatternFilter) return true
 
@@ -278,18 +340,7 @@ function matchesRule(fileName, rule) {
   }
 
   if (hasPatternFilter) {
-    const pattern = filters.namePattern.trim()
-    const mm      = getMicromatch()
-
-    if (mm) {
-      patternMatch = mm.isMatch(fileName.toLowerCase(), pattern.toLowerCase(), {
-        nocase:  true,
-        dot:     true,
-        windows: true,
-      })
-    } else {
-      patternMatch = _globMatch(fileName, pattern)
-    }
+    patternMatch = namePatterns.some(pattern => matchesNamePattern(fileName, pattern))
   }
 
   return extMatch && patternMatch
@@ -400,6 +451,7 @@ module.exports = {
   resolveRuleDestinationDir,
   getExtensionFolderName,
   getCategoryFolderName,
+  getNameFolderName,
   moveFile,
   copyFile,
   matchesRule,
