@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import useAppStore from '../store/useAppStore'
 
 function csvEscape(value) {
@@ -51,6 +52,29 @@ function ActionButton({ children, onClick, disabled, primary = false }) {
   )
 }
 
+function FilterButton({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: active ? '1px solid var(--accent-border)' : '1px solid var(--border-default)',
+        background: active ? 'var(--accent-muted)' : 'var(--bg-overlay)',
+        color: active ? 'var(--accent)' : 'var(--text-secondary)',
+        borderRadius: 999,
+        padding: '6px 10px',
+        fontSize: 11,
+        fontWeight: 800,
+        cursor: 'pointer',
+        fontFamily: 'DM Sans, sans-serif',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
 function actionTone(action, undone) {
   if (undone) return 'red'
   if (action === 'skip') return 'amber'
@@ -58,9 +82,68 @@ function actionTone(action, undone) {
   return 'accent'
 }
 
+function matchesSearch(log, query) {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return [log.fileName, log.from, log.to, log.ruleId, log.action]
+    .filter(Boolean)
+    .some(value => String(value).toLowerCase().includes(q))
+}
+
+function matchesAction(log, actionFilter) {
+  if (actionFilter === 'all') return true
+  if (actionFilter === 'undone') return Boolean(log.undone)
+  if (actionFilter === 'skip') return log.action === 'skip' || Boolean(log.skipped)
+  return log.action === actionFilter
+}
+
+function matchesFlag(log, flagFilter) {
+  if (flagFilter === 'all') return true
+  if (flagFilter === 'conflict') return Boolean(log.conflict)
+  if (flagFilter === 'renamed') return Boolean(log.renamed)
+  if (flagFilter === 'overwritten') return Boolean(log.overwritten)
+  if (flagFilter === 'normal') return !log.conflict && !log.renamed && !log.skipped && !log.overwritten && !log.undone
+  return true
+}
+
+function ReportsFilters({ search, setSearch, actionFilter, setActionFilter, flagFilter, setFlagFilter, onClear, hasFilter }) {
+  return (
+    <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <input
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+          placeholder="Search file, source, destination, ruleId..."
+          style={{ flex: 1, minWidth: 0, background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', borderRadius: 'var(--radius)', padding: '9px 12px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif' }}
+        />
+        <ActionButton onClick={onClear} disabled={!hasFilter}>Clear</ActionButton>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>Action</span>
+        {[
+          ['all', 'All'],
+          ['move', 'Move'],
+          ['copy', 'Copy'],
+          ['skip', 'Skip'],
+          ['undone', 'Undone'],
+        ].map(([value, label]) => <FilterButton key={value} active={actionFilter === value} onClick={() => setActionFilter(value)}>{label}</FilterButton>)}
+        <span style={{ width: 1, height: 20, background: 'var(--border-subtle)', margin: '0 4px' }} />
+        <span style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>Flag</span>
+        {[
+          ['all', 'All'],
+          ['normal', 'Normal'],
+          ['conflict', 'Conflict'],
+          ['renamed', 'Renamed'],
+          ['overwritten', 'Overwrite'],
+        ].map(([value, label]) => <FilterButton key={value} active={flagFilter === value} onClick={() => setFlagFilter(value)}>{label}</FilterButton>)}
+      </div>
+    </div>
+  )
+}
+
 function ReportsTable({ logs }) {
   if (!logs.length) {
-    return <div style={{ padding: 34, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Belum ada activity log untuk diexport. Jalankan rule terlebih dahulu.</div>
+    return <div style={{ padding: 34, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Tidak ada log yang cocok dengan filter saat ini.</div>
   }
 
   return (
@@ -99,23 +182,23 @@ function ReportsTable({ logs }) {
   )
 }
 
-function ReportsInspector({ logs }) {
-  const last = logs[0]
-  const conflictCount = logs.filter(l => l.conflict).length
-  const undoneCount = logs.filter(l => l.undone).length
+function ReportsInspector({ logs, filteredLogs }) {
+  const last = filteredLogs[0] || logs[0]
+  const conflictCount = filteredLogs.filter(l => l.conflict).length
+  const undoneCount = filteredLogs.filter(l => l.undone).length
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 20, gap: 14 }}>
       <div>
         <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800 }}>Report Summary</div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.6 }}>Reports memakai data Activity Log yang tersimpan di aplikasi. Export CSV cocok untuk audit dan dokumentasi.</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.6 }}>Reports memakai data Activity Log yang tersimpan di aplikasi. Export CSV mengikuti hasil filter aktif.</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ padding: 12, borderRadius: 'var(--radius)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>Last activity</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>Last visible activity</div>
           <div style={{ marginTop: 5, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{last ? `${last.fileName} · ${new Date(last.timestamp).toLocaleString()}` : '-'}</div>
         </div>
         <div style={{ padding: 12, borderRadius: 'var(--radius)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>Attention</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>Filtered Attention</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}><Pill tone={conflictCount ? 'amber' : 'neutral'}>{conflictCount} conflict</Pill><Pill tone={undoneCount ? 'red' : 'neutral'}>{undoneCount} undone</Pill></div>
         </div>
       </div>
@@ -129,12 +212,27 @@ function ReportsInspector({ logs }) {
 
 export default function ReportsPage() {
   const { logs } = useAppStore()
-  const moved = logs.filter(l => l.action === 'move').length
-  const copied = logs.filter(l => l.action === 'copy').length
-  const skipped = logs.filter(l => l.action === 'skip' || l.skipped).length
-  const overwritten = logs.filter(l => l.overwritten).length
-  const undone = logs.filter(l => l.undone).length
-  const canExport = logs.length > 0
+  const [search, setSearch] = useState('')
+  const [actionFilter, setActionFilter] = useState('all')
+  const [flagFilter, setFlagFilter] = useState('all')
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => matchesSearch(log, search) && matchesAction(log, actionFilter) && matchesFlag(log, flagFilter))
+  }, [logs, search, actionFilter, flagFilter])
+
+  const moved = filteredLogs.filter(l => l.action === 'move').length
+  const copied = filteredLogs.filter(l => l.action === 'copy').length
+  const skipped = filteredLogs.filter(l => l.action === 'skip' || l.skipped).length
+  const overwritten = filteredLogs.filter(l => l.overwritten).length
+  const undone = filteredLogs.filter(l => l.undone).length
+  const hasFilter = Boolean(search.trim() || actionFilter !== 'all' || flagFilter !== 'all')
+  const canExport = filteredLogs.length > 0
+
+  const clearFilters = () => {
+    setSearch('')
+    setActionFilter('all')
+    setFlagFilter('all')
+  }
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', overflow: 'hidden' }}>
@@ -143,31 +241,42 @@ export default function ReportsPage() {
           <div>
             <div style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Reports</div>
             <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 24, lineHeight: 1.1, margin: 0 }}>Activity Reports</h1>
-            <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, maxWidth: 720 }}>Lihat ringkasan aktivitas AutoMover dan export riwayat ke CSV untuk dokumentasi.</p>
+            <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, maxWidth: 720 }}>Lihat ringkasan aktivitas AutoMover, cari log tertentu, dan export hasil filter ke CSV.</p>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}><ActionButton onClick={() => exportLogsCsv(logs)} disabled={!canExport} primary>Export Activity CSV</ActionButton></div>
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}><ActionButton onClick={() => exportLogsCsv(filteredLogs)} disabled={!canExport} primary>Export Filtered CSV</ActionButton></div>
         </div>
 
         <div style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12, borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-          <StatCard label="Total" value={logs.length} hint="logs" tone="accent" />
+          <StatCard label="Visible" value={filteredLogs.length} hint={`${logs.length} total`} tone="accent" />
           <StatCard label="Moved" value={moved} hint="move" tone="accent" />
           <StatCard label="Copied" value={copied} hint="copy" tone="green" />
           <StatCard label="Skipped" value={skipped} hint="skip" tone={skipped ? 'amber' : 'neutral'} />
           <StatCard label="Undone" value={undone} hint="undo" tone={undone ? 'red' : 'neutral'} />
         </div>
 
-        {overwritten > 0 && <div style={{ margin: '16px 20px 0', padding: 12, background: '#ef444418', border: '1px solid #ef444444', color: '#f87171', borderRadius: 'var(--radius)', fontSize: 12, flexShrink: 0 }}>Ada {overwritten} aktivitas overwrite. Pastikan laporan ini disimpan jika dibutuhkan untuk audit.</div>}
+        <ReportsFilters
+          search={search}
+          setSearch={setSearch}
+          actionFilter={actionFilter}
+          setActionFilter={setActionFilter}
+          flagFilter={flagFilter}
+          setFlagFilter={setFlagFilter}
+          onClear={clearFilters}
+          hasFilter={hasFilter}
+        />
+
+        {overwritten > 0 && <div style={{ margin: '16px 20px 0', padding: 12, background: '#ef444418', border: '1px solid #ef444444', color: '#f87171', borderRadius: 'var(--radius)', fontSize: 12, flexShrink: 0 }}>Ada {overwritten} aktivitas overwrite dalam hasil filter. Pastikan laporan ini disimpan jika dibutuhkan untuk audit.</div>}
 
         <div style={{ flex: 1, minHeight: 0, margin: '20px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <ReportsTable logs={logs} />
+          <ReportsTable logs={filteredLogs} />
           <div style={{ flexShrink: 0, padding: '9px 14px', borderTop: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: 11, display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-            <span>Showing {logs.length} of {logs.length} logs</span>
+            <span>Showing {filteredLogs.length} of {logs.length} logs{hasFilter ? ' · filtered' : ''}</span>
             <span>Scroll vertikal untuk melihat semua log · scroll horizontal untuk path panjang</span>
           </div>
         </div>
       </section>
 
-      <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', overflow: 'hidden', minHeight: 0 }}><ReportsInspector logs={logs} /></aside>
+      <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', overflow: 'hidden', minHeight: 0 }}><ReportsInspector logs={logs} filteredLogs={filteredLogs} /></aside>
     </div>
   )
 }
