@@ -16,7 +16,7 @@ const STEPS = [
   { id: 'source', title: 'Source', desc: 'Folder yang akan dirapikan' },
   { id: 'match', title: 'Match', desc: 'Kriteria file yang diproses' },
   { id: 'destination', title: 'Destination', desc: 'Lokasi hasil sortir' },
-  { id: 'action', title: 'Action', desc: 'Move/copy dan status rule' },
+  { id: 'action', title: 'Action', desc: 'Move/copy, konflik nama, dan status rule' },
   { id: 'review', title: 'Review', desc: 'Cek sebelum simpan' },
 ]
 
@@ -36,6 +36,7 @@ function buildDefault() {
     destination: '',
     organizeBy: 'category',
     destinationBase: 'custom',
+    conflictStrategy: 'rename',
     autoCreateFolder: true,
     isActive: true,
   }
@@ -104,6 +105,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
       ...rule,
       organizeBy: rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
       destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
+      conflictStrategy: rule.conflictStrategy ?? 'rename',
       filters: {
         extensions: rule.filters?.extensions ?? [],
         namePattern: rule.filters?.namePattern ?? '',
@@ -128,6 +130,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
         ...rule,
         organizeBy: rule.organizeBy ?? rule.groupBy ?? rule.destinationMode ?? 'category',
         destinationBase: rule.destinationBase ?? rule.destinationRoot ?? 'custom',
+        conflictStrategy: rule.conflictStrategy ?? 'rename',
         filters: {
           extensions: rule.filters?.extensions ?? [],
           namePattern: rule.filters?.namePattern ?? '',
@@ -236,6 +239,7 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
         destination: form.destinationBase === 'source' ? '' : form.destination.trim(),
         organizeBy: form.organizeBy,
         destinationBase: form.destinationBase,
+        conflictStrategy: form.conflictStrategy || 'rename',
         filters: {
           extensions: form.filters.extensions,
           namePattern: form.filters.namePattern.trim(),
@@ -252,6 +256,12 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
     name: 'Berdasarkan nama file',
     none: 'Folder tetap',
   }[form.organizeBy]
+
+  const conflictName = {
+    rename: 'Rename otomatis',
+    skip: 'Skip / lewati file bentrok',
+    overwrite: 'Overwrite / timpa file lama',
+  }[form.conflictStrategy || 'rename']
 
   const destinationPreview = (() => {
     const base = form.destinationBase === 'source' ? 'Folder sumber' : (form.destination || 'Folder tujuan')
@@ -366,6 +376,18 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
           <OptionCard active={form.action === 'copy'} title="📋 Salin (Copy)" desc="File tetap di sumber." onClick={() => setField('action', 'copy')} />
         </div>
       </div>
+
+      <div>
+        <label style={S.label}>Jika nama file sudah ada</label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+          <OptionCard active={(form.conflictStrategy || 'rename') === 'rename'} title="Rename otomatis" desc="File baru diberi suffix. Contoh: laporan_1.pdf." onClick={() => setField('conflictStrategy', 'rename')} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <OptionCard active={form.conflictStrategy === 'skip'} title="Skip" desc="File bentrok dilewati, file lama tetap aman." onClick={() => setField('conflictStrategy', 'skip')} />
+            <OptionCard active={form.conflictStrategy === 'overwrite'} title="Overwrite" desc="File lama di tujuan akan ditimpa." onClick={() => setField('conflictStrategy', 'overwrite')} />
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', border: '1px solid var(--border-subtle)' }}>
         <input id="autoCreate" type="checkbox" checked={form.autoCreateFolder} onChange={e => setField('autoCreateFolder', e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer', flexShrink: 0 }} />
         <label htmlFor="autoCreate" style={{ cursor: 'pointer', userSelect: 'none' }}>
@@ -376,9 +398,6 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
       <div style={{ padding: '12px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', border: '1px solid var(--border-subtle)' }}>
         <Toggle value={form.isActive} onChange={v => setField('isActive', v)} label={<span><span style={{ fontWeight: 700 }}>Aturan aktif</span><span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{form.isActive ? 'Aturan ini akan berjalan saat monitoring aktif' : 'Aturan ini dinonaktifkan'}</span></span>} />
       </div>
-      <InfoCard title="Slot fitur berikutnya">
-        Conflict strategy Rename / Skip / Overwrite akan cocok ditempatkan di step ini tanpa mengganggu tampilan.
-      </InfoCard>
     </div>
   )
 
@@ -392,10 +411,11 @@ export default function RuleBuilder({ rule = null, onSave, onCancel }) {
         <SummaryRow label="Nama file" value={form.filters.namePattern || 'Tidak difilter'} />
         <SummaryRow label="Destination" value={destinationPreview} />
         <SummaryRow label="Action" value={form.action === 'move' ? 'Move / pindahkan' : 'Copy / salin'} />
+        <SummaryRow label="Conflict" value={conflictName} />
         <SummaryRow label="Status" value={form.isActive ? 'Aktif' : 'Nonaktif'} />
       </div>
       <InfoCard title="Review sebelum simpan">
-        Setelah disimpan, rule ini bisa dijalankan lewat Rapihkan Sekarang atau Auto-Monitor. Fitur preview/dry run akan ditambahkan di halaman Preview.
+        Setelah disimpan, rule ini bisa dicek lewat Preview/Dry Run sebelum benar-benar dijalankan.
       </InfoCard>
     </div>
   )
