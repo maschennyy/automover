@@ -5,6 +5,7 @@ import RuleBuilder from './components/RuleBuilder'
 import ActivityLog from './components/ActivityLog'
 import TrayMenu from './components/TrayMenu'
 import PreviewPage from './components/PreviewPage'
+import ReportsPage from './components/ReportsPage'
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -341,7 +342,7 @@ function AppShell() {
     if (activeTab === 'logs') return <HistoryPage />
     if (activeTab === 'settings') return <SettingsPage />
     if (activeTab === 'presets') return <PlaceholderPage page="presets" />
-    if (activeTab === 'reports') return <PlaceholderPage page="reports" />
+    if (activeTab === 'reports') return <ReportsPage />
     return <DashboardPage onCreateRule={openCreateRuleFromDashboard} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} />
   }
 
