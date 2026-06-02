@@ -1,15 +1,14 @@
-import { useEffect, useState, Component } from 'react'
-import useAppStore   from './store/useAppStore'
-import RuleList      from './components/RuleList'
-import RuleBuilder   from './components/RuleBuilder'
-import ActivityLog   from './components/ActivityLog'
-import TrayMenu      from './components/TrayMenu'
+import { useEffect, useMemo, useState, Component } from 'react'
+import useAppStore from './store/useAppStore'
+import RuleList from './components/RuleList'
+import RuleBuilder from './components/RuleBuilder'
+import ActivityLog from './components/ActivityLog'
+import TrayMenu from './components/TrayMenu'
 
-// ─── Error Boundary ───────────────────────────────────────────────────────────
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null, errorInfo: null }
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error) {
@@ -17,8 +16,6 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    this.setState({ errorInfo })
-    // Log to console — in production you could also write to a log file via IPC
     console.error('[AutoMover ErrorBoundary] Unhandled error:', error, errorInfo)
   }
 
@@ -26,501 +23,394 @@ class ErrorBoundary extends Component {
     if (!this.state.hasError) return this.props.children
 
     return (
-      <div style={{
-        height:         '100vh',
-        display:        'flex',
-        flexDirection:  'column',
-        alignItems:     'center',
-        justifyContent: 'center',
-        background:     'var(--bg-base)',
-        color:          'var(--text-primary)',
-        gap:            16,
-        padding:        40,
-        textAlign:      'center',
-      }}>
-        <div style={{ fontSize: 48 }}>⚠️</div>
-        <div>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-            Terjadi Kesalahan Tak Terduga
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7, maxWidth: 400 }}>
-            AutoMover mengalami error internal. Data dan file Anda tidak terpengaruh.
-          </p>
-        </div>
-        {this.state.error && (
-          <code style={{
-            background:   'var(--bg-elevated)',
-            border:       '1px solid var(--border-default)',
-            borderRadius: 8,
-            padding:      '10px 16px',
-            fontSize:     11,
-            fontFamily:   'JetBrains Mono, monospace',
-            color:        'var(--danger)',
-            maxWidth:     500,
-            wordBreak:    'break-word',
-            textAlign:    'left',
-          }}>
-            {this.state.error.message}
-          </code>
-        )}
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button
-            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
-            style={{
-              padding:      '9px 20px',
-              borderRadius: 8,
-              border:       '1px solid var(--border-default)',
-              background:   'transparent',
-              color:        'var(--text-secondary)',
-              fontSize:     13,
-              cursor:       'pointer',
-              fontFamily:   'DM Sans, sans-serif',
-            }}
-          >
-            Coba Lagi
-          </button>
-          <button
-            onClick={() => window.automover?.window?.close?.()}
-            style={{
-              padding:      '9px 20px',
-              borderRadius: 8,
-              border:       'none',
-              background:   'var(--accent)',
-              color:        '#fff',
-              fontSize:     13,
-              fontWeight:   600,
-              cursor:       'pointer',
-              fontFamily:   'DM Sans, sans-serif',
-            }}
-          >
-            Tutup Aplikasi
-          </button>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', color: 'var(--text-primary)', padding: 40 }}>
+        <div style={{ width: 520, padding: 28, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', textAlign: 'center' }}>
+          <div style={{ fontSize: 42, marginBottom: 14 }}>⚠️</div>
+          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, margin: 0 }}>Terjadi Kesalahan</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>AutoMover mengalami error internal. Data dan file Anda tidak terpengaruh.</p>
+          {this.state.error && <code style={{ display: 'block', padding: 12, background: 'var(--bg-overlay)', color: 'var(--danger)', borderRadius: 8, fontSize: 11, textAlign: 'left', wordBreak: 'break-word' }}>{this.state.error.message}</code>}
+          <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 18, padding: '9px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Coba Lagi</button>
         </div>
       </div>
     )
   }
 }
 
-// ─── Onboarding Modal ─────────────────────────────────────────────────────────
 const ONBOARDING_STEPS = [
-  {
-    icon:  '📂',
-    title: 'Pilih Folder yang Dipantau',
-    desc:  'Tentukan folder seperti "Downloads" yang ingin dijaga tetap rapi. AutoMover akan memantau folder ini secara real-time.',
-  },
-  {
-    icon:  '⚙️',
-    title: 'Buat Aturan Sortir',
-    desc:  'Tentukan: file berekstensi apa, harus dipindahkan ke mana. Contoh: semua .pdf → folder "Dokumen/PDF".',
-  },
-  {
-    icon:  '⚡',
-    title: 'Aktifkan Auto-Monitor',
-    desc:  'Nyalakan Auto-Monitor dan biarkan AutoMover bekerja di background. Setiap file baru akan langsung disortir otomatis.',
-  },
+  { icon: '📂', title: 'Pilih folder sumber', desc: 'Gunakan folder seperti Downloads, Desktop, atau folder kerja yang sering berantakan.' },
+  { icon: '🧠', title: 'Tentukan cara sortir', desc: 'Pilih Smart Category, ekstensi, nama file, atau folder tetap sesuai kebutuhan.' },
+  { icon: '⚡', title: 'Jalankan otomatis', desc: 'Aktifkan Auto-Monitor atau gunakan Rapihkan Sekarang untuk proses manual.' },
 ]
 
 function OnboardingModal({ onStart, onSkip }) {
   const [step, setStep] = useState(0)
-  const current = ONBOARDING_STEPS[step]
-  const isLast  = step === ONBOARDING_STEPS.length - 1
+  const item = ONBOARDING_STEPS[step]
+  const isLast = step === ONBOARDING_STEPS.length - 1
 
   return (
-    <div style={{
-      position:       'fixed',
-      inset:          0,
-      zIndex:         500,
-      background:     'rgba(0,0,0,0.65)',
-      display:        'flex',
-      alignItems:     'center',
-      justifyContent: 'center',
-      backdropFilter: 'blur(4px)',
-    }}>
-      <div style={{
-        background:    'var(--bg-elevated)',
-        border:        '1px solid var(--border-default)',
-        borderRadius:  'var(--radius-xl)',
-        padding:       '36px 36px 28px',
-        width:         420,
-        boxShadow:     '0 24px 80px rgba(0,0,0,0.6)',
-        animation:     'fadeIn 0.2s ease',
-        display:       'flex',
-        flexDirection: 'column',
-        gap:           20,
-      }}>
-        {/* Step indicator dots */}
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-          {ONBOARDING_STEPS.map((_, i) => (
-            <span key={i} style={{
-              width:        i === step ? 20 : 6,
-              height:       6,
-              borderRadius: 99,
-              background:   i === step ? 'var(--accent)' : 'var(--border-strong)',
-              transition:   'width 0.2s, background 0.2s',
-            }} />
-          ))}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.68)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+      <div style={{ width: 430, padding: 30, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', boxShadow: '0 24px 80px rgba(0,0,0,0.55)', animation: 'fadeIn 0.2s ease' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 22 }}>
+          {ONBOARDING_STEPS.map((_, i) => <span key={i} style={{ width: i === step ? 22 : 7, height: 7, borderRadius: 99, background: i === step ? 'var(--accent)' : 'var(--border-strong)', transition: 'all .2s' }} />)}
         </div>
-
-        {/* Content */}
-        <div style={{ textAlign: 'center', animation: 'fadeIn 0.2s ease' }} key={step}>
-          <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 16 }}>{current.icon}</div>
-          <h2 style={{
-            fontFamily: 'Syne, sans-serif',
-            fontSize:   18,
-            fontWeight: 700,
-            marginBottom: 10,
-            color:      'var(--text-primary)',
-          }}>
-            {current.title}
-          </h2>
-          <p style={{
-            fontSize:   13,
-            color:      'var(--text-secondary)',
-            lineHeight: 1.7,
-          }}>
-            {current.desc}
-          </p>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 16 }}>{item.icon}</div>
+          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, margin: 0 }}>{item.title}</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>{item.desc}</p>
         </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-          {isLast ? (
-            <button
-              type="button"
-              onClick={onStart}
-              style={{
-                padding:      '11px 0',
-                borderRadius: 'var(--radius)',
-                border:       'none',
-                background:   'var(--accent)',
-                color:        '#fff',
-                fontSize:     14,
-                fontWeight:   700,
-                cursor:       'pointer',
-                fontFamily:   'Syne, sans-serif',
-              }}
-            >
-              ✦ Mulai Buat Aturan Pertama
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setStep(s => s + 1)}
-              style={{
-                padding:      '11px 0',
-                borderRadius: 'var(--radius)',
-                border:       'none',
-                background:   'var(--accent)',
-                color:        '#fff',
-                fontSize:     13,
-                fontWeight:   600,
-                cursor:       'pointer',
-                fontFamily:   'DM Sans, sans-serif',
-              }}
-            >
-              Selanjutnya →
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onSkip}
-            style={{
-              padding:    '8px 0',
-              background: 'none',
-              border:     'none',
-              color:      'var(--text-muted)',
-              fontSize:   12,
-              cursor:     'pointer',
-              fontFamily: 'DM Sans, sans-serif',
-            }}
-          >
-            Lewati, saya sudah tahu caranya
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
+          <button type="button" onClick={isLast ? onStart : () => setStep(s => s + 1)} style={{ padding: '11px 0', border: 'none', borderRadius: 'var(--radius)', background: 'var(--accent)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            {isLast ? 'Mulai Buat Aturan' : 'Selanjutnya →'}
           </button>
+          <button type="button" onClick={onSkip} style={{ padding: '8px 0', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>Lewati</button>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-const IconRules    = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
-const IconLogs     = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/></svg>
-const IconSettings = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-const IconMinus    = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="5.5" width="10" height="1.2" rx="0.6"/></svg>
-const IconSquare   = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="1.5" y="1.5" width="9" height="9" rx="1"/></svg>
-const IconX        = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M1.5 1.5 10.5 10.5M10.5 1.5 1.5 10.5"/></svg>
+const Icon = ({ children }) => <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}>{children}</span>
+const IconMinus = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="5.5" width="10" height="1.2" rx="0.6" /></svg>
+const IconSquare = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="1.5" y="1.5" width="9" height="9" rx="1" /></svg>
+const IconX = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M1.5 1.5 10.5 10.5M10.5 1.5 1.5 10.5" /></svg>
 
-// ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { id: 'rules',    label: 'Aturan',     Icon: IconRules    },
-  { id: 'logs',     label: 'Riwayat',    Icon: IconLogs     },
-  { id: 'settings', label: 'Pengaturan', Icon: IconSettings },
+  { id: 'dashboard', label: 'Dashboard', icon: '⌂' },
+  { id: 'rules', label: 'Rules', icon: '⚙' },
+  { id: 'preview', label: 'Preview', icon: '◌' },
+  { id: 'presets', label: 'Presets', icon: '▣' },
+  { id: 'logs', label: 'History', icon: '≡' },
+  { id: 'reports', label: 'Reports', icon: '↧' },
+  { id: 'settings', label: 'Settings', icon: '☰' },
 ]
 
-// ─── Panels ───────────────────────────────────────────────────────────────────
-// ─── Rules section — wraps RuleList + RuleBuilder side-by-side ────────────────
-function RulesSection() {
+function Pill({ children, tone = 'neutral' }) {
+  const map = {
+    neutral: ['var(--bg-overlay)', 'var(--text-secondary)', 'var(--border-default)'],
+    live: ['#22c55e18', '#4ade80', '#22c55e44'],
+    accent: ['var(--accent-muted)', 'var(--accent)', 'var(--accent-border)'],
+    danger: ['#ef444418', '#f87171', '#ef444444'],
+  }
+  const [bg, color, border] = map[tone] || map.neutral
+  return <span style={{ padding: '4px 8px', borderRadius: 99, background: bg, color, border: `1px solid ${border}`, fontSize: 11, fontWeight: 700 }}>{children}</span>
+}
+
+function StatCard({ label, value, hint, tone = 'neutral' }) {
+  return (
+    <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>{label}</div>
+        <Pill tone={tone}>{hint}</Pill>
+      </div>
+      <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 30, fontWeight: 700, marginTop: 12 }}>{value}</div>
+    </div>
+  )
+}
+
+function PageHeader({ eyebrow, title, desc, actions }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, padding: '22px 26px 18px', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div>
+        <div style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>{eyebrow}</div>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 24, lineHeight: 1.1, margin: 0 }}>{title}</h1>
+        {desc && <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, maxWidth: 680 }}>{desc}</p>}
+      </div>
+      {actions && <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>{actions}</div>}
+    </div>
+  )
+}
+
+function PrimaryButton({ children, onClick, disabled }) {
+  return <button type="button" disabled={disabled} onClick={onClick} style={{ padding: '9px 14px', border: 'none', borderRadius: 'var(--radius)', background: disabled ? 'var(--bg-overlay)' : 'var(--accent)', color: disabled ? 'var(--text-muted)' : '#fff', fontSize: 12, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>{children}</button>
+}
+
+function SecondaryButton({ children, onClick, disabled }) {
+  return <button type="button" disabled={disabled} onClick={onClick} style={{ padding: '9px 14px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius)', background: 'var(--bg-surface)', color: disabled ? 'var(--text-muted)' : 'var(--text-secondary)', fontSize: 12, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>{children}</button>
+}
+
+function DashboardPage({ onCreateRule, onOpenRules }) {
+  const { rules, logs, isWatcherActive, watchingFolders, runNow, ui } = useAppStore()
+  const [runBusy, setRunBusy] = useState(false)
+  const activeRules = rules.filter(r => r.isActive).length
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayLogs = logs.filter(l => String(l.timestamp || '').slice(0, 10) === todayKey)
+  const recentLogs = logs.slice(0, 7)
+
+  const handleRun = async () => {
+    setRunBusy(true)
+    try { await runNow() } finally { setRunBusy(false) }
+  }
+
+  return (
+    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <PageHeader
+        eyebrow="Workspace"
+        title="AutoMover Dashboard"
+        desc="Pusat kontrol untuk memantau folder, menjalankan sortir manual, dan melihat aktivitas terbaru."
+        actions={<><SecondaryButton onClick={onOpenRules}>Lihat Rules</SecondaryButton><PrimaryButton onClick={onCreateRule}>+ Buat Rule</PrimaryButton></>}
+      />
+      <div style={{ padding: 24, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
+          <StatCard label="Files today" value={todayLogs.length} hint="hari ini" tone="accent" />
+          <StatCard label="Active rules" value={activeRules} hint={`${rules.length} total`} />
+          <StatCard label="Monitored" value={watchingFolders.length} hint={isWatcherActive ? 'live' : 'off'} tone={isWatcherActive ? 'live' : 'neutral'} />
+          <StatCard label="History" value={logs.length} hint="max 500" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1.35fr .65fr', gap: 16, alignItems: 'stretch' }}>
+          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15 }}>Recent Activity</h3>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>Aktivitas file terbaru akan muncul di sini.</p>
+              </div>
+              <Pill tone={isWatcherActive ? 'live' : 'neutral'}>{isWatcherActive ? 'Monitoring ON' : 'Monitoring OFF'}</Pill>
+            </div>
+            <div style={{ padding: 12 }}>
+              {recentLogs.length === 0 ? (
+                <div style={{ padding: 34, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Belum ada aktivitas. Buat rule lalu jalankan preview atau rapihkan sekarang.</div>
+              ) : recentLogs.map(log => (
+                <div key={log.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, padding: '10px 8px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.fileName}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.to}</div>
+                  </div>
+                  <Pill tone={log.undone ? 'danger' : 'accent'}>{log.action}</Pill>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15 }}>Quick Actions</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6 }}>Aksi cepat tanpa masuk ke halaman pengaturan mendalam.</p>
+            </div>
+            <PrimaryButton onClick={handleRun} disabled={runBusy || ui.isLoading}>{runBusy ? 'Memproses...' : '⚡ Rapihkan Sekarang'}</PrimaryButton>
+            <SecondaryButton onClick={onCreateRule}>+ Rule Baru</SecondaryButton>
+            <SecondaryButton onClick={onOpenRules}>Kelola Rules</SecondaryButton>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RulesWorkspace() {
   const { addRule, updateRule } = useAppStore()
-
-  // null = panel closed | undefined = create mode | Rule object = edit mode
   const [editingRule, setEditingRule] = useState(null)
-  const [panelOpen, setPanelOpen]     = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
 
-  const openCreate = () => {
-    setEditingRule(undefined)  // undefined = create mode, distinct from null (closed)
-    setPanelOpen(true)
-  }
-
-  const openEdit = (rule) => {
-    setEditingRule(rule)
-    setPanelOpen(true)
-  }
-
-  const closePanel = () => {
-    setPanelOpen(false)
-    // Slight delay so the slide-out animation can complete before clearing state
-    setTimeout(() => setEditingRule(null), 200)
-  }
+  const openCreate = () => { setEditingRule(undefined); setPanelOpen(true) }
+  const openEdit = (rule) => { setEditingRule(rule); setPanelOpen(true) }
+  const closePanel = () => { setPanelOpen(false); setTimeout(() => setEditingRule(null), 160) }
 
   const handleSave = async (rule) => {
-    if (editingRule && editingRule.id) {
-      // Edit mode: update existing
-      await updateRule(rule)
-    } else {
-      // Create mode: add new
-      await addRule(rule)
-    }
+    if (editingRule && editingRule.id) await updateRule(rule)
+    else await addRule(rule)
     closePanel()
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-      {/* Left: rule list */}
-      <div style={{
-        flex:       panelOpen ? '0 0 52%' : '1',
-        minWidth:   0,
-        display:    'flex',
-        flexDirection: 'column',
-        overflow:   'hidden',
-        transition: 'flex 0.25s ease',
-        borderRight: panelOpen ? '1px solid var(--border-subtle)' : 'none',
-      }}>
-        <RuleList onAddNew={openCreate} onEdit={openEdit} />
-      </div>
+    <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: panelOpen ? 'minmax(420px, 1fr) minmax(420px, 520px)' : '1fr 320px', overflow: 'hidden', transition: 'grid-template-columns .25s ease' }}>
+      <section style={{ minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <PageHeader
+          eyebrow="Rules"
+          title="File Organization Rules"
+          desc="Buat dan kelola aturan untuk Smart Category, ekstensi, nama file, reference list, dan folder tetap."
+          actions={<PrimaryButton onClick={openCreate}>+ Buat Rule</PrimaryButton>}
+        />
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <RuleList onAddNew={openCreate} onEdit={openEdit} />
+        </div>
+      </section>
 
-      {/* Right: rule builder panel */}
-      <div style={{
-        flex:       panelOpen ? '0 0 48%' : '0 0 0px',
-        overflow:   'hidden',
-        transition: 'flex 0.25s ease',
-        minWidth:   0,
-      }}>
-        {panelOpen && (
-          <RuleBuilder
-            rule={editingRule ?? null}
-            onSave={handleSave}
-            onCancel={closePanel}
-          />
+      <aside style={{ minWidth: 0, borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', overflow: 'hidden' }}>
+        {panelOpen ? (
+          <RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} />
+        ) : (
+          <Inspector title="Rule Inspector" subtitle="Pilih rule untuk melihat detail atau buat rule baru." items={[
+            ['Match', 'Exact, Partial, Smart, Nama, Ekstensi'],
+            ['Destination', 'Folder tetap, kategori, ekstensi, nama file'],
+            ['Next', 'Preview, Preset, Export CSV'],
+          ]} action={<PrimaryButton onClick={openCreate}>+ Rule Baru</PrimaryButton>} />
         )}
-      </div>
+      </aside>
     </div>
   )
 }
 
-// ─── Toast Notification Component ────────────────────────────────────────────
-function ToastList() {
-  const { toasts, dismissToast } = useAppStore()
-  if (toasts.length === 0) return null
+function Inspector({ title, subtitle, items = [], action }) {
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 20, gap: 16 }}>
+      <div>
+        <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 700 }}>{title}</div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.6 }}>{subtitle}</p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {items.map(([k, v]) => (
+          <div key={k} style={{ padding: 12, borderRadius: 'var(--radius)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em' }}>{k}</div>
+            <div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.5 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ flex: 1 }} />
+      {action}
+    </div>
+  )
+}
+
+function PlaceholderPage({ page }) {
+  const content = {
+    preview: ['Preview / Dry Run', 'Simulasi rencana pemindahan file sebelum benar-benar dieksekusi. Nanti area ini akan berisi tabel matched, skipped, conflict, dan confidence score.'],
+    presets: ['Presets', 'Simpan workflow favorit seperti Rapikan Downloads, Foto SANOB, Invoice Kantor, atau File Kuliah.'],
+    reports: ['Reports', 'Export CSV dari hasil preview/run dengan status, operation, source, destination, matched keyword, reason, dan confidence.'],
+  }[page]
 
   return (
-    <div style={{
-      position:      'fixed',
-      bottom:        20,
-      right:         20,
-      zIndex:        999,
-      display:       'flex',
-      flexDirection: 'column',
-      gap:           8,
-      pointerEvents: 'none',
-    }}>
+    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 320px', overflow: 'hidden' }}>
+      <section style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <PageHeader eyebrow="Coming next" title={content[0]} desc={content[1]} />
+        <div style={{ padding: 24, overflow: 'auto' }}>
+          <div style={{ padding: 28, border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-xl)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>
+            Halaman ini sengaja disiapkan dari sekarang agar fitur berikutnya tidak menumpuk di satu form. Struktur UI sudah menyediakan ruang untuk pengembangan lanjutan.
+          </div>
+        </div>
+      </section>
+      <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+        <Inspector title="Roadmap Slot" subtitle="Area ini akan dipakai untuk detail hasil, filter, dan ringkasan." items={[[content[0], 'Disiapkan untuk tahap pengembangan berikutnya.'], ['UI Strategy', 'Progressive disclosure: fitur advanced muncul hanya ketika dibutuhkan.']]} />
+      </aside>
+    </div>
+  )
+}
+
+function SettingsPage() {
+  return (
+    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 320px', overflow: 'hidden' }}>
+      <section style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <PageHeader eyebrow="Settings" title="Application Settings" desc="Pengaturan tray, auto-monitor, notifikasi, dan perilaku aplikasi." />
+        <div style={{ flex: 1, overflow: 'auto' }}><TrayMenu /></div>
+      </section>
+      <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+        <Inspector title="Settings Inspector" subtitle="Nanti area ini bisa menampilkan default match mode, default conflict strategy, theme, dan startup behavior." items={[[ 'Current', 'Tray dan setting dasar tetap memakai komponen lama.' ], [ 'Next', 'Default workflow settings.' ]]} />
+      </aside>
+    </div>
+  )
+}
+
+function HistoryPage() {
+  return (
+    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 320px', overflow: 'hidden' }}>
+      <section style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <PageHeader eyebrow="History" title="Activity History" desc="Riwayat move/copy/undo dari semua rule AutoMover." />
+        <div style={{ flex: 1, overflow: 'hidden' }}><ActivityLog /></div>
+      </section>
+      <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+        <Inspector title="History Inspector" subtitle="Area detail untuk file yang dipilih akan ditambahkan di tahap berikutnya." items={[[ 'Undo', 'Sudah tersedia dari ActivityLog.' ], [ 'Next', 'Filter by date, rule, status, dan export.' ]]} />
+      </aside>
+    </div>
+  )
+}
+
+function ToastList() {
+  const { toasts, dismissToast } = useAppStore()
+  if (!toasts.length) return null
+  return (
+    <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {toasts.map(t => (
-        <div
-          key={t.id}
-          style={{
-            pointerEvents:  'all',
-            display:        'flex',
-            alignItems:     'center',
-            gap:            10,
-            padding:        '10px 14px',
-            borderRadius:   'var(--radius-lg)',
-            background:     t.type === 'error' ? '#ef444422' : '#22c55e18',
-            border:         `1px solid ${t.type === 'error' ? '#ef444444' : '#22c55e44'}`,
-            color:          t.type === 'error' ? '#f87171' : '#4ade80',
-            fontSize:       12,
-            fontWeight:     500,
-            maxWidth:       320,
-            backdropFilter: 'blur(8px)',
-            animation:      'fadeIn 0.2s ease',
-            boxShadow:      '0 4px 20px rgba(0,0,0,0.4)',
-          }}
-        >
-          <span style={{ flexShrink: 0 }}>{t.type === 'error' ? '⚠️' : '✓'}</span>
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {t.message}
-          </span>
-          <button
-            onClick={() => dismissToast(t.id)}
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 2px', opacity: 0.6, fontSize: 14 }}
-          >×</button>
+        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-lg)', background: t.type === 'error' ? '#ef444422' : '#22c55e18', border: `1px solid ${t.type === 'error' ? '#ef444444' : '#22c55e44'}`, color: t.type === 'error' ? '#f87171' : '#4ade80', fontSize: 12, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,0,0,.35)' }}>
+          <span>{t.type === 'error' ? '⚠️' : '✓'}</span>
+          <span style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</span>
+          <button onClick={() => dismissToast(t.id)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: .7 }}>×</button>
         </div>
       ))}
     </div>
   )
 }
 
-// ─── Monitor Bar ──────────────────────────────────────────────────────────────
-function MonitorBar() {
-  const {
-    isWatcherActive, watchingFolders,
-    startWatcher, stopWatcher, runNow,
-    ui: { isLoading },
-  } = useAppStore()
+function TopBar({ title }) {
+  const { isWatcherActive, watchingFolders, startWatcher, stopWatcher, runNow, ui } = useAppStore()
+  const [busy, setBusy] = useState(false)
 
-  const [runBusy, setRunBusy] = useState(false)
-
-  const handleToggle = async () => {
-    if (isWatcherActive) {
-      await stopWatcher()
-    } else {
-      await startWatcher()
-    }
-  }
-
-  const handleRunNow = async () => {
-    setRunBusy(true)
-    try { await runNow() } finally { setRunBusy(false) }
-  }
+  const handleRun = async () => { setBusy(true); try { await runNow() } finally { setBusy(false) } }
+  const handleToggle = async () => { isWatcherActive ? await stopWatcher() : await startWatcher() }
+  const isMac = navigator.userAgent.includes('Mac')
 
   return (
-    <div style={{
-      display:       'flex',
-      alignItems:    'center',
-      gap:           10,
-      padding:       '8px 16px',
-      borderBottom:  '1px solid var(--border-subtle)',
-      background:    isWatcherActive ? '#22c55e08' : 'var(--bg-surface)',
-      flexShrink:    0,
-      transition:    'background 0.3s',
-    }}>
-      {/* Status dot + label */}
-      <span style={{
-        width:        7,
-        height:       7,
-        borderRadius: '50%',
-        background:   isWatcherActive ? 'var(--success)' : 'var(--text-muted)',
-        boxShadow:    isWatcherActive ? '0 0 6px var(--success)' : 'none',
-        flexShrink:   0,
-        transition:   'background 0.2s',
-      }} />
-      <span style={{ fontSize: 12, color: isWatcherActive ? '#4ade80' : 'var(--text-muted)', flex: 1 }}>
-        {isWatcherActive
-          ? `Memantau ${watchingFolders.length} folder`
-          : 'Auto-monitor nonaktif'}
-      </span>
+    <div className="app-drag-region" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: isMac ? 80 : 18, paddingRight: isMac ? 18 : 0, borderBottom: '1px solid var(--border-subtle)', background: 'rgba(22,22,29,.92)', backdropFilter: 'blur(10px)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent)', display: 'grid', placeItems: 'center', fontWeight: 900, fontFamily: 'Syne, sans-serif' }}>A</div>
+        <div>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 800 }}>AutoMover</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{title}</div>
+        </div>
+        <Pill tone={isWatcherActive ? 'live' : 'neutral'}>{isWatcherActive ? `LIVE · ${watchingFolders.length} folder` : 'Monitor off'}</Pill>
+      </div>
 
-      {/* One-click clean button */}
-      <button
-        type="button"
-        onClick={handleRunNow}
-        disabled={runBusy || isLoading}
-        title="Sortir semua file sekarang"
-        style={{
-          display:      'flex',
-          alignItems:   'center',
-          gap:          5,
-          padding:      '5px 11px',
-          borderRadius: 'var(--radius)',
-          border:       '1px solid var(--border-default)',
-          background:   'transparent',
-          color:        runBusy ? 'var(--text-muted)' : 'var(--text-secondary)',
-          fontSize:     11,
-          fontWeight:   600,
-          cursor:       runBusy ? 'not-allowed' : 'pointer',
-          fontFamily:   'DM Sans, sans-serif',
-          transition:   'background 0.15s',
-        }}
-        onMouseEnter={e => { if (!runBusy) e.currentTarget.style.background = 'var(--bg-elevated)' }}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        {runBusy ? '⏳' : '⚡'} {runBusy ? 'Memproses...' : 'Rapihkan Sekarang'}
-      </button>
-
-      {/* Auto-monitor toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Auto-Monitor</span>
-        <button
-          type="button"
-          onClick={handleToggle}
-          title={isWatcherActive ? 'Matikan auto-monitor' : 'Aktifkan auto-monitor'}
-          style={{
-            width:        40,
-            height:       22,
-            borderRadius: 99,
-            border:       '1px solid var(--border-default)',
-            background:   isWatcherActive ? 'var(--success)' : 'var(--bg-overlay)',
-            position:     'relative',
-            cursor:       'pointer',
-            transition:   'background 0.2s',
-            flexShrink:   0,
-          }}
-        >
-          <span style={{
-            position:     'absolute',
-            top:          2,
-            left:         isWatcherActive ? 19 : 2,
-            width:        16,
-            height:       16,
-            borderRadius: '50%',
-            background:   '#fff',
-            transition:   'left 0.18s',
-            boxShadow:    '0 1px 3px rgba(0,0,0,0.3)',
-          }} />
+      <div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <SecondaryButton onClick={handleRun} disabled={busy || ui.isLoading}>{busy ? 'Memproses...' : '⚡ Rapihkan Sekarang'}</SecondaryButton>
+        <button type="button" onClick={handleToggle} style={{ width: 46, height: 26, borderRadius: 99, border: '1px solid var(--border-default)', background: isWatcherActive ? 'var(--success)' : 'var(--bg-overlay)', position: 'relative', cursor: 'pointer' }}>
+          <span style={{ position: 'absolute', top: 3, left: isWatcherActive ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .18s', boxShadow: '0 1px 4px rgba(0,0,0,.35)' }} />
         </button>
+        {!isMac && <div style={{ display: 'flex', marginLeft: 6 }}>
+          {[['minimize', IconMinus, 'var(--bg-overlay)'], ['maximize', IconSquare, 'var(--bg-overlay)'], ['close', IconX, '#c42b1c']].map(([action, ControlIcon, hoverBg]) => (
+            <button key={action} type="button" onClick={() => window.automover?.window[action]?.()} onMouseEnter={e => { e.currentTarget.style.background = hoverBg }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }} style={{ width: 46, height: 58, border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}><ControlIcon /></button>
+          ))}
+        </div>}
       </div>
     </div>
   )
 }
 
-// ─── App root ─────────────────────────────────────────────────────────────────
-// ─── AppShell: the actual UI, wrapped by ErrorBoundary below ─────────────────
-function AppShell() {
-  const {
-    ui, setActiveTab, settings, rules,
-    bootstrap, updateSettings, openRuleModal,
-  } = useAppStore()
-  const { activeTab, isLoading } = ui
+function Sidebar({ activeTab, setActiveTab }) {
+  const { isWatcherActive, watchingFolders, rules } = useAppStore()
+  return (
+    <nav style={{ width: 228, flexShrink: 0, borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', padding: 14, gap: 4 }}>
+      <div style={{ padding: '8px 8px 18px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>Workspace</div>
+      </div>
+      {NAV_ITEMS.map(item => {
+        const active = activeTab === item.id
+        return (
+          <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 11px', borderRadius: 'var(--radius)', border: 'none', background: active ? 'var(--accent-muted)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: active ? 800 : 600, textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}>
+            <Icon>{item.icon}</Icon>{item.label}
+          </button>
+        )
+      })}
+      <div style={{ flex: 1 }} />
+      <div style={{ padding: 12, borderRadius: 'var(--radius-lg)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: isWatcherActive ? 'var(--success)' : 'var(--text-muted)', boxShadow: isWatcherActive ? '0 0 7px var(--success)' : 'none' }} />
+          <span style={{ fontSize: 12, fontWeight: 800 }}>{isWatcherActive ? 'Monitoring aktif' : 'Monitoring off'}</span>
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.55 }}>{watchingFolders.length} folder dipantau · {rules.filter(r => r.isActive).length} rule aktif</div>
+      </div>
+    </nav>
+  )
+}
 
-  // ── Onboarding: show on first run if no rules yet ──────────────────────────
+function AppShell() {
+  const { ui, setActiveTab, settings, bootstrap, updateSettings, openRuleModal } = useAppStore()
+  const { activeTab, isLoading } = ui
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
     bootstrap().then(() => {
-      // After bootstrap, check conditions inside a timeout so state has settled
       setTimeout(() => {
         const s = useAppStore.getState()
-        if (!s.settings.onboardingComplete) {
-          setShowOnboarding(true)
-        }
+        if (!s.settings.onboardingComplete) setShowOnboarding(true)
       }, 200)
     })
   }, [])
+
+  const currentTitle = useMemo(() => NAV_ITEMS.find(i => i.id === activeTab)?.label || 'Dashboard', [activeTab])
 
   const handleOnboardingStart = async () => {
     setShowOnboarding(false)
     await updateSettings({ onboardingComplete: true })
     setActiveTab('rules')
-    // Small delay so the Rules tab is visible before the modal opens
-    setTimeout(() => openRuleModal(), 300)
+    setTimeout(() => openRuleModal(), 250)
   }
 
   const handleOnboardingSkip = async () => {
@@ -528,195 +418,38 @@ function AppShell() {
     await updateSettings({ onboardingComplete: true })
   }
 
-  const isMac = navigator.userAgent.includes('Mac')
+  const openCreateRuleFromDashboard = () => {
+    setActiveTab('rules')
+    setTimeout(() => openRuleModal(), 120)
+  }
+
+  const renderPage = () => {
+    if (isLoading) return <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Memuat data...</div>
+    if (activeTab === 'dashboard') return <DashboardPage onCreateRule={openCreateRuleFromDashboard} onOpenRules={() => setActiveTab('rules')} />
+    if (activeTab === 'rules') return <RulesWorkspace />
+    if (activeTab === 'logs') return <HistoryPage />
+    if (activeTab === 'settings') return <SettingsPage />
+    if (activeTab === 'preview') return <PlaceholderPage page="preview" />
+    if (activeTab === 'presets') return <PlaceholderPage page="presets" />
+    if (activeTab === 'reports') return <PlaceholderPage page="reports" />
+    return <DashboardPage onCreateRule={openCreateRuleFromDashboard} onOpenRules={() => setActiveTab('rules')} />
+  }
 
   return (
-    <div style={{
-      display:       'flex',
-      flexDirection: 'column',
-      height:        '100vh',
-      background:    'var(--bg-base)',
-      overflow:      'hidden',
-    }}>
-
-      {/* ── Custom Titlebar ────────────────────────────────────── */}
-      <div
-        className="drag-region"
-        style={{
-          height:         40,
-          display:        'flex',
-          alignItems:     'center',
-          justifyContent: 'space-between',
-          paddingLeft:    isMac ? 80 : 16,
-          paddingRight:   isMac ? 16 : 0,
-          borderBottom:   '1px solid var(--border-subtle)',
-          flexShrink:     0,
-          background:     'var(--bg-surface)',
-        }}
-      >
-        <div style={{
-          display:    'flex',
-          alignItems: 'center',
-          gap:        8,
-          fontFamily: 'Syne, sans-serif',
-          fontWeight: 700,
-          fontSize:   13,
-          color:      'var(--text-primary)',
-        }}>
-          <span style={{ fontSize: 15 }}>⚡</span>
-          AutoMover
-          {settings.autoMonitor && (
-            <span style={{
-              background: '#22c55e22', color: '#22c55e',
-              fontSize: 9, fontWeight: 700, padding: '2px 7px',
-              borderRadius: 99, fontFamily: 'DM Sans, sans-serif',
-              letterSpacing: '0.06em',
-            }}>LIVE</span>
-          )}
-        </div>
-
-        {/* Windows window controls */}
-        {!isMac && (
-          <div className="no-drag" style={{ display: 'flex' }}>
-            {[
-              { action: 'minimize', Icon: IconMinus, hoverBg: 'var(--bg-overlay)' },
-              { action: 'maximize', Icon: IconSquare, hoverBg: 'var(--bg-overlay)' },
-              { action: 'close',    Icon: IconX,     hoverBg: '#c42b1c' },
-            ].map(({ action, Icon, hoverBg }) => (
-              <button
-                key={action}
-                type="button"
-                onClick={() => window.automover?.window[action]?.()}
-                onMouseEnter={e => e.currentTarget.style.background = hoverBg}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                style={{
-                  width: 46, height: 40, border: 'none', background: 'transparent',
-                  color: 'var(--text-secondary)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.1s',
-                }}
-              >
-                <Icon />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Body ───────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* Sidebar */}
-        <nav style={{
-          width:         192,
-          flexShrink:    0,
-          borderRight:   '1px solid var(--border-subtle)',
-          display:       'flex',
-          flexDirection: 'column',
-          padding:       '10px 8px',
-          gap:           2,
-          background:    'var(--bg-surface)',
-        }}>
-          {NAV_ITEMS.map(({ id, label, Icon }) => {
-            const active = activeTab === id
-            return (
-              <button
-                key={id}
-                type="button"
-                className="no-drag"
-                onClick={() => setActiveTab(id)}
-                style={{
-                  display:      'flex',
-                  alignItems:   'center',
-                  gap:          9,
-                  padding:      '8px 11px',
-                  borderRadius: 'var(--radius)',
-                  border:       'none',
-                  background:   active ? 'var(--accent-muted)' : 'transparent',
-                  color:        active ? 'var(--accent)' : 'var(--text-secondary)',
-                  cursor:       'pointer',
-                  fontSize:     13,
-                  fontWeight:   active ? 600 : 400,
-                  textAlign:    'left',
-                  transition:   'background 0.15s, color 0.15s',
-                  fontFamily:   'DM Sans, sans-serif',
-                  width:        '100%',
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-elevated)' }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-              >
-                <Icon />
-                {label}
-              </button>
-            )
-          })}
-
-          <div style={{ flex: 1 }} />
-
-          {/* Monitor status (sidebar footer) */}
-          <div style={{
-            display:      'flex',
-            alignItems:   'center',
-            gap:          7,
-            padding:      '7px 11px',
-            borderRadius: 'var(--radius)',
-            background:   'var(--bg-elevated)',
-            fontSize:     11,
-            color:        'var(--text-muted)',
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-              background: settings.autoMonitor ? 'var(--success)' : 'var(--bg-overlay)',
-              boxShadow:  settings.autoMonitor ? '0 0 5px var(--success)' : 'none',
-              transition: 'background 0.2s',
-            }} />
-            {settings.autoMonitor ? 'Monitoring aktif' : 'Tidak aktif'}
-          </div>
-        </nav>
-
-        {/* Content area */}
-        <main style={{
-          flex:          1,
-          display:       'flex',
-          flexDirection: 'column',
-          overflow:      'hidden',
-          background:    'var(--bg-base)',
-        }}>
-          {/* Monitor control bar — shown on all tabs */}
-          <MonitorBar />
-
-          {isLoading ? (
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--text-muted)', fontSize: 13,
-            }}>
-              <span style={{ opacity: 0.6 }}>Memuat data...</span>
-            </div>
-          ) : (
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-              {activeTab === 'rules'    && <RulesSection />}
-              {activeTab === 'logs'     && <ActivityLog />}
-              {activeTab === 'settings' && <TrayMenu />}
-            </div>
-          )}
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', overflow: 'hidden', color: 'var(--text-primary)' }}>
+      <TopBar title={currentTitle} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <main style={{ flex: 1, minWidth: 0, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(124,58,237,.04), transparent 220px), var(--bg-base)' }}>
+          {renderPage()}
         </main>
       </div>
-
-      {/* Toast notifications (fixed overlay) */}
       <ToastList />
-
-      {/* Onboarding modal — shown on first run */}
-      {showOnboarding && (
-        <OnboardingModal
-          onStart={handleOnboardingStart}
-          onSkip={handleOnboardingSkip}
-        />
-      )}
+      {showOnboarding && <OnboardingModal onStart={handleOnboardingStart} onSkip={handleOnboardingSkip} />}
     </div>
   )
 }
 
-// ─── Default export: AppShell wrapped in ErrorBoundary ────────────────────────
 export default function App() {
   return (
     <ErrorBoundary>
