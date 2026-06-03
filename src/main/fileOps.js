@@ -26,6 +26,9 @@ function sleepSync(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 
 function normalisePath(p) { return path.resolve(p).replace(/\\/g, '/') }
 function samePath(a, b) { return normalisePath(a) === normalisePath(b) }
 function getConflictStrategy(rule) { return ['rename', 'skip', 'overwrite'].includes(rule?.conflictStrategy) ? rule.conflictStrategy : 'rename' }
+function getDuplicateStrategy(rule) { return ['none', 'skip-same-name-size'].includes(rule?.duplicateStrategy) ? rule.duplicateStrategy : 'none' }
+function getRulePriority(rule) { const n = Number(rule?.priority); return Number.isFinite(n) ? n : 100 }
+function sortRulesByPriority(rules) { return [...(rules || [])].filter(r => r.isActive === true).sort((a, b) => getRulePriority(a) - getRulePriority(b)) }
 
 function createDirectoryIfNotExists(dirPath) {
   try { fs.mkdirSync(dirPath, { recursive: true }); return { success: true } }
@@ -39,11 +42,9 @@ function resolveDestinationPath(destinationDir, fileName, strategy = 'rename') {
   const ext = path.extname(fileName)
   const base = path.basename(fileName, ext)
   let candidate = path.join(destinationDir, fileName)
-
   if (!fs.existsSync(candidate)) return { path: candidate, conflict: false, skipped: false, overwritten: false, renamed: false }
   if (strategy === 'skip') return { path: candidate, conflict: true, skipped: true, overwritten: false, renamed: false }
   if (strategy === 'overwrite') return { path: candidate, conflict: true, skipped: false, overwritten: true, renamed: false }
-
   let counter = 1
   while (true) {
     candidate = path.join(destinationDir, `${base}_${counter}${ext}`)
@@ -58,11 +59,9 @@ function resolvePreviewDestinationPath(destinationDir, fileName, reservedPaths =
   const base = path.basename(fileName, ext)
   let candidate = path.join(destinationDir, fileName)
   const isTaken = (p) => fs.existsSync(p) || reservedPaths.has(normalisePath(p))
-
   if (!isTaken(candidate)) return { path: candidate, conflict: false, skipped: false, overwritten: false, renamed: false }
   if (strategy === 'skip') return { path: candidate, conflict: true, skipped: true, overwritten: false, renamed: false }
   if (strategy === 'overwrite') return { path: candidate, conflict: true, skipped: false, overwritten: true, renamed: false }
-
   let counter = 1
   while (true) {
     candidate = path.join(destinationDir, `${base}_${counter}${ext}`)
@@ -70,6 +69,16 @@ function resolvePreviewDestinationPath(destinationDir, fileName, reservedPaths =
     counter++
     if (counter > 9999) throw new Error(`Terlalu banyak file duplikat untuk "${fileName}" di "${destinationDir}"`)
   }
+}
+
+function hasSameNameSizeDuplicate(sourcePath, destinationDir) {
+  const candidate = path.join(destinationDir, path.basename(sourcePath))
+  if (!fs.existsSync(candidate)) return false
+  try {
+    const src = fs.statSync(sourcePath)
+    const dest = fs.statSync(candidate)
+    return src.isFile() && dest.isFile() && src.size === dest.size
+  } catch { return false }
 }
 
 function _renameCrossDevice(src, dest) {
@@ -94,9 +103,7 @@ function _withRetry(fn, fileName, maxRetries = 3, delayMs = 500) {
   throw lastErr
 }
 
-function safeFolderName(name) {
-  return String(name || '').trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\.+$/g, '').slice(0, 80) || 'unknown'
-}
+function safeFolderName(name) { return String(name || '').trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\.+$/g, '').slice(0, 80) || 'unknown' }
 function getFileExtension(fileName) { return path.extname(fileName).replace(/^\./, '').toLowerCase() }
 function getExtensionFolderName(fileName) { return safeFolderName(getFileExtension(fileName) || 'no-extension') }
 function getCategoryFolderName(fileName) {
@@ -157,9 +164,8 @@ function ensureDestinationReady(sourcePath, destinationDir, rule) {
     else throw new Error(`Folder tujuan tidak ada dan autoCreateFolder dinonaktifkan: "${destinationDir}"`)
   }
 }
-
 function buildLog(rule, fileName, sourcePath, destPath, action, extra = {}) {
-  return { id: uuidv4(), timestamp: new Date().toISOString(), ruleId: rule.id, fileName, from: sourcePath, to: destPath, action, undone: false, ...extra }
+  return { id: uuidv4(), timestamp: new Date().toISOString(), ruleId: rule.id, priority: getRulePriority(rule), fileName, from: sourcePath, to: destPath, action, undone: false, ...extra }
 }
 
 function moveFile(sourcePath, destinationDir, rule) {
@@ -167,13 +173,12 @@ function moveFile(sourcePath, destinationDir, rule) {
   const finalDestinationDir = resolveRuleDestinationDir(sourcePath, destinationDir, rule)
   ensureDestinationReady(sourcePath, finalDestinationDir, rule)
   const fileName = path.basename(sourcePath)
+  if (getDuplicateStrategy(rule) === 'skip-same-name-size' && hasSameNameSizeDuplicate(sourcePath, finalDestinationDir)) {
+    return buildLog(rule, fileName, sourcePath, path.join(finalDestinationDir, fileName), 'skip', { skipped: true, duplicate: true, duplicateStrategy: getDuplicateStrategy(rule) })
+  }
   const resolved = resolveDestinationPath(finalDestinationDir, fileName, getConflictStrategy(rule))
-
   if (resolved.skipped) return buildLog(rule, fileName, sourcePath, resolved.path, 'skip', { skipped: true, conflict: true })
-  _withRetry(() => {
-    if (resolved.overwritten && fs.existsSync(resolved.path)) fs.unlinkSync(resolved.path)
-    _renameCrossDevice(sourcePath, resolved.path)
-  }, fileName)
+  _withRetry(() => { if (resolved.overwritten && fs.existsSync(resolved.path)) fs.unlinkSync(resolved.path); _renameCrossDevice(sourcePath, resolved.path) }, fileName)
   return buildLog(rule, fileName, sourcePath, resolved.path, 'move', { conflict: resolved.conflict, renamed: resolved.renamed, overwritten: resolved.overwritten })
 }
 
@@ -182,13 +187,12 @@ function copyFile(sourcePath, destinationDir, rule) {
   const finalDestinationDir = resolveRuleDestinationDir(sourcePath, destinationDir, rule)
   ensureDestinationReady(sourcePath, finalDestinationDir, rule)
   const fileName = path.basename(sourcePath)
+  if (getDuplicateStrategy(rule) === 'skip-same-name-size' && hasSameNameSizeDuplicate(sourcePath, finalDestinationDir)) {
+    return buildLog(rule, fileName, sourcePath, path.join(finalDestinationDir, fileName), 'skip', { skipped: true, duplicate: true, duplicateStrategy: getDuplicateStrategy(rule) })
+  }
   const resolved = resolveDestinationPath(finalDestinationDir, fileName, getConflictStrategy(rule))
-
   if (resolved.skipped) return buildLog(rule, fileName, sourcePath, resolved.path, 'skip', { skipped: true, conflict: true })
-  _withRetry(() => {
-    if (resolved.overwritten) fs.copyFileSync(sourcePath, resolved.path)
-    else fs.copyFileSync(sourcePath, resolved.path, fs.constants.COPYFILE_EXCL)
-  }, fileName)
+  _withRetry(() => { if (resolved.overwritten) fs.copyFileSync(sourcePath, resolved.path); else fs.copyFileSync(sourcePath, resolved.path, fs.constants.COPYFILE_EXCL) }, fileName)
   return buildLog(rule, fileName, sourcePath, resolved.path, 'copy', { conflict: resolved.conflict, renamed: resolved.renamed, overwritten: resolved.overwritten })
 }
 
@@ -218,10 +222,7 @@ function matchesRule(fileName, rule) {
   if (hasPatternFilter) patternMatch = namePatterns.some(pattern => matchesNamePattern(fileName, pattern))
   return extMatch && patternMatch
 }
-function _globMatch(fileName, pattern) {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')
-  return new RegExp(`^${escaped}$`, 'i').test(fileName)
-}
+function _globMatch(fileName, pattern) { const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.'); return new RegExp(`^${escaped}$`, 'i').test(fileName) }
 function readTopLevelFiles(sourceDirectory) {
   if (!fs.existsSync(sourceDirectory)) throw new Error(`Folder sumber tidak ditemukan: "${sourceDirectory}"`)
   const dirStat = fs.statSync(sourceDirectory)
@@ -233,9 +234,8 @@ function readTopLevelFiles(sourceDirectory) {
 function scanAndSort(sourceDirectory, rules) {
   const result = { success: [], skipped: [], errors: [] }
   const files = readTopLevelFiles(sourceDirectory)
-  const activeRules = (rules || []).filter(r => r.isActive === true)
+  const activeRules = sortRulesByPriority(rules)
   if (activeRules.length === 0 || files.length === 0) return result
-
   for (const fileEntry of files) {
     const fileName = fileEntry.name
     const sourcePath = path.join(sourceDirectory, fileName)
@@ -248,7 +248,7 @@ function scanAndSort(sourceDirectory, rules) {
         else result.success.push(logEntry)
         if (rule.action !== 'copy') break
       } catch (err) {
-        result.errors.push({ fileName, ruleId: rule.id, error: err.message })
+        result.errors.push({ fileName, ruleId: rule.id, priority: getRulePriority(rule), error: err.message })
         if (!fs.existsSync(sourcePath)) break
       }
     }
@@ -260,8 +260,7 @@ function previewScan(sourceDirectory, rules, reservedPaths = new Set()) {
   const items = []
   const errors = []
   const files = readTopLevelFiles(sourceDirectory)
-  const activeRules = (rules || []).filter(r => r.isActive === true)
-
+  const activeRules = sortRulesByPriority(rules)
   for (const fileEntry of files) {
     const fileName = fileEntry.name
     const sourcePath = path.join(sourceDirectory, fileName)
@@ -271,27 +270,31 @@ function previewScan(sourceDirectory, rules, reservedPaths = new Set()) {
       try {
         const finalDestinationDir = resolveRuleDestinationDir(sourcePath, rule.destination, rule)
         const strategy = getConflictStrategy(rule)
+        const priority = getRulePriority(rule)
+        const duplicateStrategy = getDuplicateStrategy(rule)
         if (samePath(path.dirname(sourcePath), finalDestinationDir)) {
-          items.push({ id: uuidv4(), status: 'error', fileName, sourcePath, destinationPath: '', destinationFolder: finalDestinationDir, ruleId: rule.id, ruleName: rule.name || rule.id, action: rule.action || 'move', conflictStrategy: strategy, message: `Folder sumber dan tujuan akhir sama: ${finalDestinationDir}`, willCreateFolder: false, conflict: false, renamed: false, skipped: false, overwritten: false })
+          items.push({ id: uuidv4(), status: 'error', fileName, sourcePath, destinationPath: '', destinationFolder: finalDestinationDir, ruleId: rule.id, ruleName: rule.name || rule.id, priority, action: rule.action || 'move', conflictStrategy: strategy, duplicateStrategy, message: `Folder sumber dan tujuan akhir sama: ${finalDestinationDir}`, willCreateFolder: false, conflict: false, renamed: false, skipped: false, overwritten: false, duplicate: false })
           if ((rule.action || 'move') !== 'copy') break
           continue
         }
-        const resolved = resolvePreviewDestinationPath(finalDestinationDir, fileName, reservedPaths, strategy)
+        const duplicate = duplicateStrategy === 'skip-same-name-size' && hasSameNameSizeDuplicate(sourcePath, finalDestinationDir)
+        const resolved = duplicate ? { path: path.join(finalDestinationDir, fileName), conflict: false, skipped: true, overwritten: false, renamed: false } : resolvePreviewDestinationPath(finalDestinationDir, fileName, reservedPaths, strategy)
         if (!resolved.skipped && !resolved.overwritten) reservedPaths.add(normalisePath(resolved.path))
         const willCreateFolder = !fs.existsSync(finalDestinationDir)
         const autoCreateOff = willCreateFolder && rule.autoCreateFolder === false
         let status = 'planned'
         let message = 'Siap diproses'
         if (autoCreateOff) { status = 'error'; message = 'Folder tujuan belum ada dan auto-create nonaktif' }
+        else if (duplicate) { status = 'skipped'; message = 'Duplicate detected: nama dan ukuran sama, file akan dilewati' }
         else if (resolved.skipped) { status = 'skipped'; message = 'Nama bentrok, file akan dilewati' }
         else if (resolved.overwritten) { message = 'Nama bentrok, file lama akan ditimpa' }
         else if (willCreateFolder) { message = 'Folder tujuan akan dibuat saat run' }
         else if (resolved.renamed) { message = 'Nama bentrok, file akan diberi suffix otomatis' }
-        items.push({ id: uuidv4(), status, fileName, sourcePath, destinationPath: resolved.path, destinationFolder: finalDestinationDir, ruleId: rule.id, ruleName: rule.name || rule.id, action: rule.action || 'move', conflictStrategy: strategy, message, willCreateFolder, conflict: resolved.conflict, renamed: resolved.renamed, skipped: resolved.skipped, overwritten: resolved.overwritten })
+        items.push({ id: uuidv4(), status, fileName, sourcePath, destinationPath: resolved.path, destinationFolder: finalDestinationDir, ruleId: rule.id, ruleName: rule.name || rule.id, priority, action: rule.action || 'move', conflictStrategy: strategy, duplicateStrategy, message, willCreateFolder, conflict: resolved.conflict, renamed: resolved.renamed, skipped: resolved.skipped, overwritten: resolved.overwritten, duplicate })
         if ((rule.action || 'move') !== 'copy') break
       } catch (err) {
-        errors.push({ fileName, sourcePath, ruleId: rule.id, error: err.message })
-        items.push({ id: uuidv4(), status: 'error', fileName, sourcePath, destinationPath: '', destinationFolder: '', ruleId: rule.id, ruleName: rule.name || rule.id, action: rule.action || 'move', conflictStrategy: getConflictStrategy(rule), message: err.message, willCreateFolder: false, conflict: false, renamed: false, skipped: false, overwritten: false })
+        errors.push({ fileName, sourcePath, ruleId: rule.id, priority: getRulePriority(rule), error: err.message })
+        items.push({ id: uuidv4(), status: 'error', fileName, sourcePath, destinationPath: '', destinationFolder: '', ruleId: rule.id, ruleName: rule.name || rule.id, priority: getRulePriority(rule), action: rule.action || 'move', conflictStrategy: getConflictStrategy(rule), duplicateStrategy: getDuplicateStrategy(rule), message: err.message, willCreateFolder: false, conflict: false, renamed: false, skipped: false, overwritten: false, duplicate: false })
         break
       }
     }
@@ -300,16 +303,13 @@ function previewScan(sourceDirectory, rules, reservedPaths = new Set()) {
 }
 
 function previewRules(rules) {
-  const activeRules = (rules || []).filter(r => r.isActive === true)
+  const activeRules = sortRulesByPriority(rules)
   const folders = [...new Set(activeRules.map(r => r.watchFolder).filter(Boolean))]
   const reservedPaths = new Set()
-  const result = { success: true, generatedAt: new Date().toISOString(), items: [], errors: [], summary: { planned: 0, skipped: 0, error: 0, createFolders: 0, conflicts: 0, renamed: 0, overwritten: 0, folders: folders.length } }
+  const result = { success: true, generatedAt: new Date().toISOString(), items: [], errors: [], summary: { planned: 0, skipped: 0, error: 0, createFolders: 0, conflicts: 0, renamed: 0, overwritten: 0, duplicates: 0, folders: folders.length } }
   for (const folder of folders) {
-    try {
-      const folderResult = previewScan(folder, activeRules, reservedPaths)
-      result.items.push(...folderResult.items)
-      result.errors.push(...folderResult.errors)
-    } catch (err) { result.errors.push({ folder, error: err.message }) }
+    try { const folderResult = previewScan(folder, activeRules, reservedPaths); result.items.push(...folderResult.items); result.errors.push(...folderResult.errors) }
+    catch (err) { result.errors.push({ folder, error: err.message }) }
   }
   result.summary.planned = result.items.filter(i => i.status === 'planned').length
   result.summary.skipped = result.items.filter(i => i.status === 'skipped').length
@@ -318,6 +318,7 @@ function previewRules(rules) {
   result.summary.conflicts = result.items.filter(i => i.conflict).length
   result.summary.renamed = result.items.filter(i => i.renamed).length
   result.summary.overwritten = result.items.filter(i => i.overwritten).length
+  result.summary.duplicates = result.items.filter(i => i.duplicate).length
   return result
 }
 
@@ -325,13 +326,8 @@ function undoAction(logEntry) {
   if (logEntry.undone === true) throw new Error(`Operasi ini sudah dibatalkan sebelumnya: "${logEntry.fileName}"`)
   if (!fs.existsSync(logEntry.to)) throw new Error(`File tidak ditemukan di lokasi tujuan — mungkin sudah dihapus atau dipindahkan manual: "${logEntry.to}"`)
   if (logEntry.action === 'copy') fs.unlinkSync(logEntry.to)
-  else {
-    const originalDir = path.dirname(logEntry.from)
-    if (!fs.existsSync(originalDir)) fs.mkdirSync(originalDir, { recursive: true })
-    if (fs.existsSync(logEntry.from)) throw new Error(`File sudah ada di lokasi asal — tidak bisa dikembalikan tanpa menimpa: "${logEntry.from}"`)
-    _renameCrossDevice(logEntry.to, logEntry.from)
-  }
+  else { const originalDir = path.dirname(logEntry.from); if (!fs.existsSync(originalDir)) fs.mkdirSync(originalDir, { recursive: true }); if (fs.existsSync(logEntry.from)) throw new Error(`File sudah ada di lokasi asal — tidak bisa dikembalikan tanpa menimpa: "${logEntry.from}"`); _renameCrossDevice(logEntry.to, logEntry.from) }
   return { success: true, updatedLog: { ...logEntry, undone: true } }
 }
 
-module.exports = { CATEGORY_MAP, createDirectoryIfNotExists, resolveDestinationPath, resolveRuleDestinationDir, getExtensionFolderName, getCategoryFolderName, getNameFolderName, getConflictStrategy, moveFile, copyFile, matchesRule, scanAndSort, previewScan, previewRules, undoAction }
+module.exports = { CATEGORY_MAP, createDirectoryIfNotExists, resolveDestinationPath, resolveRuleDestinationDir, getExtensionFolderName, getCategoryFolderName, getNameFolderName, getConflictStrategy, getDuplicateStrategy, getRulePriority, sortRulesByPriority, moveFile, copyFile, matchesRule, scanAndSort, previewScan, previewRules, undoAction }
