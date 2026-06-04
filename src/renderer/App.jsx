@@ -18,13 +18,13 @@ class ErrorBoundary extends Component {
   render() {
     if (!this.state.hasError) return this.props.children
     return (
-      <div style={{ height: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg-base)', color: 'var(--text-primary)', padding: 32 }}>
-        <div style={{ width: 520, padding: 28, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', textAlign: 'center' }}>
-          <div style={{ fontSize: 42, marginBottom: 14 }}>⚠️</div>
+      <div style={{ height: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg-base)', color: 'var(--text-primary)', padding: 24 }}>
+        <div style={{ width: 'min(520px, 100%)', padding: 24, background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', textAlign: 'center' }}>
+          <div style={{ fontSize: 38, marginBottom: 12 }}>⚠️</div>
           <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, margin: 0 }}>Terjadi Kesalahan</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.7 }}>AutoMover mengalami error internal. Data dan file Anda tidak terpengaruh.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>AutoMover mengalami error internal.</p>
           {this.state.error && <code style={{ display: 'block', padding: 12, background: 'var(--bg-overlay)', color: 'var(--danger)', borderRadius: 8, fontSize: 11, textAlign: 'left', wordBreak: 'break-word' }}>{this.state.error.message}</code>}
-          <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 18, padding: '9px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>Coba Lagi</button>
+          <button onClick={() => this.setState({ hasError: false, error: null })} style={{ marginTop: 16, padding: '9px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 800 }}>Coba Lagi</button>
         </div>
       </div>
     )
@@ -46,6 +46,16 @@ const IconMinus = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="cu
 const IconSquare = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="1.5" y="1.5" width="9" height="9" rx="1" /></svg>
 const IconX = () => <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M1.5 1.5 10.5 10.5M10.5 1.5 1.5 10.5" /></svg>
 
+function useWindowSize() {
+  const [size, setSize] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }))
+  useEffect(() => {
+    const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return size
+}
+
 function Pill({ children, tone = 'neutral' }) {
   const map = {
     neutral: ['var(--bg-overlay)', 'var(--text-secondary)', 'var(--border-default)'],
@@ -58,44 +68,45 @@ function Pill({ children, tone = 'neutral' }) {
   return <span style={{ padding: '4px 8px', borderRadius: 99, background: bg, color, border: `1px solid ${border}`, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{children}</span>
 }
 
-function Button({ children, onClick, disabled, primary = false }) {
-  return <button type="button" disabled={disabled} onClick={onClick} style={{ padding: '9px 14px', border: primary ? 'none' : '1px solid var(--border-default)', borderRadius: 'var(--radius)', background: disabled ? 'var(--bg-overlay)' : primary ? 'var(--accent)' : 'var(--bg-surface)', color: disabled ? 'var(--text-muted)' : primary ? '#fff' : 'var(--text-secondary)', fontSize: 12, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}>{children}</button>
+function Button({ children, onClick, disabled, primary = false, compact = false }) {
+  return <button type="button" disabled={disabled} onClick={onClick} style={{ padding: compact ? '8px 10px' : '9px 14px', border: primary ? 'none' : '1px solid var(--border-default)', borderRadius: 'var(--radius)', background: disabled ? 'var(--bg-overlay)' : primary ? 'var(--accent)' : 'var(--bg-surface)', color: disabled ? 'var(--text-muted)' : primary ? '#fff' : 'var(--text-secondary)', fontSize: 12, fontWeight: 800, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>{children}</button>
 }
 
-function PageHeader({ eyebrow, title, desc, actions }) {
+function PageHeader({ eyebrow, title, desc, actions, compact }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 18, padding: '22px 26px 18px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-      <div>
-        <div style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>{eyebrow}</div>
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 24, lineHeight: 1.1, margin: 0 }}>{title}</h1>
-        {desc && <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6, maxWidth: 720 }}>{desc}</p>}
+    <div style={{ display: 'flex', alignItems: compact ? 'stretch' : 'flex-start', justifyContent: 'space-between', flexDirection: compact ? 'column' : 'row', gap: compact ? 12 : 18, padding: compact ? '16px 18px 14px' : '20px 24px 16px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ color: 'var(--accent)', fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 5 }}>{eyebrow}</div>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: compact ? 20 : 23, lineHeight: 1.1, margin: 0 }}>{title}</h1>
+        {desc && !compact && <p style={{ margin: '7px 0 0', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.55, maxWidth: 620 }}>{desc}</p>}
       </div>
-      {actions && <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>{actions}</div>}
+      {actions && <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>{actions}</div>}
     </div>
   )
 }
 
-function StatCard({ label, value, hint, tone = 'neutral' }) {
+function StatCard({ label, value, hint, tone = 'neutral', compact }) {
   return (
-    <div style={{ padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+    <div style={{ padding: compact ? 12 : 15, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', minWidth: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
         <Pill tone={tone}>{hint}</Pill>
       </div>
-      <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 30, fontWeight: 800, marginTop: 12 }}>{value}</div>
+      <div style={{ fontFamily: 'Syne, sans-serif', fontSize: compact ? 24 : 30, fontWeight: 800, marginTop: 10 }}>{value}</div>
     </div>
   )
 }
 
-function Inspector({ title, subtitle, items = [], action }) {
+function Inspector({ title, subtitle, items = [], action, compact }) {
+  if (compact) return null
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 20, gap: 16 }}>
+    <div className="panel-scroll" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 18, gap: 14 }}>
       <div>
-        <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800 }}>{title}</div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.6 }}>{subtitle}</p>
+        <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 800 }}>{title}</div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.55 }}>{subtitle}</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {items.map(([k, v]) => <div key={k} style={{ padding: 12, borderRadius: 'var(--radius)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}><div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>{k}</div><div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.5 }}>{v}</div></div>)}
+        {items.map(([k, v]) => <div key={k} style={{ padding: 11, borderRadius: 'var(--radius)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}><div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.06em' }}>{k}</div><div style={{ marginTop: 4, color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.45 }}>{v}</div></div>)}
       </div>
       <div style={{ flex: 1 }} />
       {action}
@@ -103,41 +114,43 @@ function Inspector({ title, subtitle, items = [], action }) {
   )
 }
 
-function DashboardPage({ onCreateRule, onOpenRules, onOpenPreview, onOpenPresets }) {
+function DashboardPage({ onCreateRule, onOpenRules, onOpenPreview, onOpenPresets, compact }) {
   const { rules, logs, isWatcherActive, watchingFolders, runNow, ui } = useAppStore()
   const [runBusy, setRunBusy] = useState(false)
   const activeRules = rules.filter(r => r.isActive).length
   const todayKey = new Date().toISOString().slice(0, 10)
   const todayLogs = logs.filter(l => String(l.timestamp || '').slice(0, 10) === todayKey)
-  const recentLogs = logs.slice(0, 7)
+  const recentLogs = logs.slice(0, compact ? 5 : 8)
   const handleRun = async () => { setRunBusy(true); try { await runNow() } finally { setRunBusy(false) } }
 
   return (
-    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <PageHeader eyebrow="Workspace" title="AutoMover Dashboard" desc="Pusat kontrol untuk memantau folder, menjalankan sortir manual, dan melihat aktivitas terbaru." actions={<><Button onClick={onOpenPreview}>Preview</Button><Button onClick={onOpenPresets}>Presets</Button><Button onClick={onOpenRules}>Rules</Button><Button onClick={onCreateRule} primary>+ Buat Rule</Button></>} />
-      <div style={{ padding: 24, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
-          <StatCard label="Files today" value={todayLogs.length} hint="hari ini" tone="accent" />
-          <StatCard label="Active rules" value={activeRules} hint={`${rules.length} total`} />
-          <StatCard label="Monitored" value={watchingFolders.length} hint={isWatcherActive ? 'live' : 'off'} tone={isWatcherActive ? 'live' : 'neutral'} />
-          <StatCard label="History" value={logs.length} hint="max 500" />
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <PageHeader compact={compact} eyebrow="Workspace" title="Dashboard" desc="Monitor, preview, dan jalankan rule dari satu tempat." actions={<><Button compact={compact} onClick={onOpenPreview}>Preview</Button><Button compact={compact} onClick={onOpenPresets}>Presets</Button><Button compact={compact} onClick={onOpenRules}>Rules</Button><Button compact={compact} onClick={onCreateRule} primary>New Rule</Button></>} />
+      <div className="panel-scroll" style={{ flex: 1, padding: compact ? 14 : 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+          <StatCard compact={compact} label="Today" value={todayLogs.length} hint="files" tone="accent" />
+          <StatCard compact={compact} label="Rules" value={activeRules} hint={`${rules.length} total`} />
+          <StatCard compact={compact} label="Folders" value={watchingFolders.length} hint={isWatcherActive ? 'live' : 'off'} tone={isWatcherActive ? 'live' : 'neutral'} />
+          <StatCard compact={compact} label="History" value={logs.length} hint="logs" />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.35fr .65fr', gap: 16, alignItems: 'stretch' }}>
-          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div><h3 style={{ margin: 0, fontSize: 15 }}>Recent Activity</h3><p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>Aktivitas file terbaru akan muncul di sini.</p></div>
-              <Pill tone={isWatcherActive ? 'live' : 'neutral'}>{isWatcherActive ? 'Monitoring ON' : 'Monitoring OFF'}</Pill>
+
+        <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 1.3fr) minmax(240px, .7fr)', gap: 14, minHeight: compact ? 'auto' : 280 }}>
+          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '13px 15px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 14 }}>Recent Activity</h3>
+              <Pill tone={isWatcherActive ? 'live' : 'neutral'}>{isWatcherActive ? 'Live' : 'Off'}</Pill>
             </div>
-            <div style={{ padding: 12 }}>
-              {recentLogs.length === 0 ? <div style={{ padding: 34, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Belum ada aktivitas. Buat rule lalu jalankan preview atau rapihkan sekarang.</div> : recentLogs.map(log => <div key={log.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, padding: '10px 8px', borderBottom: '1px solid var(--border-subtle)' }}><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.fileName}</div><div style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.to}</div></div><Pill tone={log.undone ? 'danger' : 'accent'}>{log.action}</Pill></div>)}
+            <div className="panel-scroll" style={{ padding: 10, flex: 1 }}>
+              {recentLogs.length === 0 ? <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No activity yet.</div> : recentLogs.map(log => <div key={log.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, padding: '9px 8px', borderBottom: '1px solid var(--border-subtle)' }}><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.fileName}</div><div style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.to}</div></div><Pill tone={log.undone ? 'danger' : 'accent'}>{log.action}</Pill></div>)}
             </div>
           </section>
-          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div><h3 style={{ margin: 0, fontSize: 15 }}>Quick Actions</h3><p style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.6 }}>Aksi cepat tanpa masuk ke halaman pengaturan mendalam.</p></div>
-            <Button onClick={handleRun} disabled={runBusy || ui.isLoading} primary>{runBusy ? 'Memproses...' : '⚡ Rapihkan Sekarang'}</Button>
-            <Button onClick={onOpenPreview}>Run Preview</Button>
-            <Button onClick={onOpenPresets}>Gunakan Preset</Button>
-            <Button onClick={onCreateRule}>+ Rule Baru</Button>
+
+          <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 15, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+            <h3 style={{ margin: 0, fontSize: 14 }}>Quick Actions</h3>
+            <Button compact={compact} onClick={handleRun} disabled={runBusy || ui.isLoading} primary>{runBusy ? 'Running...' : 'Run Now'}</Button>
+            <Button compact={compact} onClick={onOpenPreview}>Preview</Button>
+            <Button compact={compact} onClick={onOpenPresets}>Presets</Button>
+            <Button compact={compact} onClick={onCreateRule}>New Rule</Button>
           </section>
         </div>
       </div>
@@ -145,7 +158,7 @@ function DashboardPage({ onCreateRule, onOpenRules, onOpenPreview, onOpenPresets
   )
 }
 
-function RulesWorkspace() {
+function RulesWorkspace({ compact }) {
   const { addRule, updateRule } = useAppStore()
   const [editingRule, setEditingRule] = useState(null)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -153,60 +166,70 @@ function RulesWorkspace() {
   const openEdit = (rule) => { setEditingRule(rule); setPanelOpen(true) }
   const closePanel = () => { setPanelOpen(false); setTimeout(() => setEditingRule(null), 160) }
   const handleSave = async (rule) => { if (editingRule && editingRule.id) await updateRule(rule); else await addRule(rule); closePanel() }
+
+  if (compact && panelOpen) {
+    return <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}><RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} /></div>
+  }
+
   return (
-    <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: panelOpen ? 'minmax(420px, 1fr) minmax(420px, 520px)' : '1fr 320px', overflow: 'hidden', transition: 'grid-template-columns .25s ease' }}>
-      <section style={{ minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}><PageHeader eyebrow="Rules" title="File Organization Rules" desc="Buat dan kelola aturan untuk Smart Category, ekstensi, nama file, reference list, dan folder tetap." actions={<Button onClick={openCreate} primary>+ Buat Rule</Button>} /><div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}><RuleList onAddNew={openCreate} onEdit={openEdit} /></div></section>
-      <aside style={{ minWidth: 0, borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', overflow: 'hidden' }}>{panelOpen ? <RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} /> : <Inspector title="Rule Inspector" subtitle="Pilih rule untuk melihat detail atau buat rule baru." items={[[ 'Match', 'Nama, ekstensi, kategori' ], [ 'Destination', 'Folder tetap, kategori, ekstensi, nama file' ], [ 'Next', 'Preview, Preset, Export CSV' ]]} action={<Button onClick={openCreate} primary>+ Rule Baru</Button>} />}</aside>
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: panelOpen ? (compact ? '1fr' : 'minmax(0, 1fr) minmax(380px, 500px)') : (compact ? '1fr' : 'minmax(0, 1fr) 300px'), overflow: 'hidden' }}>
+      <section style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <PageHeader compact={compact} eyebrow="Rules" title="Rules" desc="Kelola aturan sortir file." actions={<Button compact={compact} onClick={openCreate} primary>New</Button>} />
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}><RuleList onAddNew={openCreate} onEdit={openEdit} /></div>
+      </section>
+      {!compact && <aside style={{ minWidth: 0, minHeight: 0, borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', overflow: 'hidden' }}>{panelOpen ? <RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} /> : <Inspector title="Rule Detail" subtitle="Pilih rule atau buat rule baru." items={[[ 'Priority', 'Angka kecil jalan lebih dulu.' ], [ 'Safety', 'Gunakan Preview sebelum Execute.' ]]} action={<Button onClick={openCreate} primary>New Rule</Button>} />}</aside>}
     </div>
   )
 }
 
-function SettingsPage() {
-  return <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 320px', overflow: 'hidden' }}><section style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}><PageHeader eyebrow="Settings" title="Application Settings" desc="Pengaturan tray, auto-monitor, notifikasi, dan perilaku aplikasi." /><div style={{ flex: 1, overflow: 'auto' }}><TrayMenu /></div></section><aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}><Inspector title="Settings Inspector" subtitle="Area ini akan dipakai untuk default workflow settings." items={[[ 'Current', 'Tray dan setting dasar tetap memakai komponen lama.' ], [ 'Next', 'Default conflict dan match mode.' ]]} /></aside></div>
+function SettingsPage({ compact }) {
+  return <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 1fr) 300px', overflow: 'hidden' }}><section style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}><PageHeader compact={compact} eyebrow="Settings" title="Settings" desc="Tray, auto-monitor, notifikasi, dan perilaku aplikasi." /><div className="panel-scroll" style={{ flex: 1 }}><TrayMenu /></div></section>{!compact && <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}><Inspector title="Settings" subtitle="Pengaturan dasar aplikasi." items={[[ 'Startup', 'Run at startup dan tray.' ], [ 'Defaults', 'Default workflow settings.' ]]} /></aside>}</div>
 }
 
-function HistoryPage() {
-  return <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 320px', overflow: 'hidden' }}><section style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}><PageHeader eyebrow="History" title="Activity History" desc="Riwayat move/copy/undo dari semua rule AutoMover." /><div style={{ flex: 1, overflow: 'hidden' }}><ActivityLog /></div></section><aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}><Inspector title="History Inspector" subtitle="Area detail untuk file yang dipilih akan ditambahkan di tahap berikutnya." items={[[ 'Undo', 'Sudah tersedia dari ActivityLog.' ], [ 'Next', 'Filter by date, rule, status, dan export.' ]]} /></aside></div>
+function HistoryPage({ compact }) {
+  return <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 1fr) 300px', overflow: 'hidden' }}><section style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}><PageHeader compact={compact} eyebrow="History" title="History" desc="Riwayat move, copy, dan undo." /><div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}><ActivityLog /></div></section>{!compact && <aside style={{ borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}><Inspector title="History" subtitle="Gunakan Reports untuk filter dan export." items={[[ 'Undo', 'Tersedia dari Activity Log.' ], [ 'Export', 'Ada di Reports.' ]]} /></aside>}</div>
 }
 
 function ToastList() {
   const { toasts, dismissToast } = useAppStore()
   if (!toasts.length) return null
-  return <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8 }}>{toasts.map(t => <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-lg)', background: t.type === 'error' ? '#ef444422' : '#22c55e18', border: `1px solid ${t.type === 'error' ? '#ef444444' : '#22c55e44'}`, color: t.type === 'error' ? '#f87171' : '#4ade80', fontSize: 12, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,0,0,.35)' }}><span>{t.type === 'error' ? '⚠️' : '✓'}</span><span style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</span><button onClick={() => dismissToast(t.id)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: .7 }}>×</button></div>)}</div>
+  return <div style={{ position: 'fixed', bottom: 16, right: 16, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8 }}>{toasts.map(t => <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--radius-lg)', background: t.type === 'error' ? '#ef444422' : '#22c55e18', border: `1px solid ${t.type === 'error' ? '#ef444444' : '#22c55e44'}`, color: t.type === 'error' ? '#f87171' : '#4ade80', fontSize: 12, fontWeight: 700, boxShadow: '0 4px 20px rgba(0,0,0,.35)' }}><span>{t.type === 'error' ? '⚠️' : '✓'}</span><span style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.message}</span><button onClick={() => dismissToast(t.id)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: .7 }}>×</button></div>)}</div>
 }
 
-function TopBar({ title }) {
+function TopBar({ title, compact }) {
   const { isWatcherActive, watchingFolders, startWatcher, stopWatcher, runNow, ui } = useAppStore()
   const [busy, setBusy] = useState(false)
   const handleRun = async () => { setBusy(true); try { await runNow() } finally { setBusy(false) } }
   const handleToggle = async () => { isWatcherActive ? await stopWatcher() : await startWatcher() }
   const isMac = navigator.userAgent.includes('Mac')
-  return <div className="app-drag-region" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: isMac ? 80 : 18, paddingRight: isMac ? 18 : 0, borderBottom: '1px solid var(--border-subtle)', background: 'rgba(22,22,29,.92)', backdropFilter: 'blur(10px)', flexShrink: 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent)', display: 'grid', placeItems: 'center', fontWeight: 900, fontFamily: 'Syne, sans-serif' }}>A</div><div><div style={{ fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 800 }}>AutoMover</div><div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{title}</div></div><Pill tone={isWatcherActive ? 'live' : 'neutral'}>{isWatcherActive ? `LIVE · ${watchingFolders.length} folder` : 'Monitor off'}</Pill></div><div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Button onClick={handleRun} disabled={busy || ui.isLoading}>{busy ? 'Memproses...' : '⚡ Rapihkan Sekarang'}</Button><button type="button" onClick={handleToggle} style={{ width: 46, height: 26, borderRadius: 99, border: '1px solid var(--border-default)', background: isWatcherActive ? 'var(--success)' : 'var(--bg-overlay)', position: 'relative', cursor: 'pointer' }}><span style={{ position: 'absolute', top: 3, left: isWatcherActive ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .18s', boxShadow: '0 1px 4px rgba(0,0,0,.35)' }} /></button>{!isMac && <div style={{ display: 'flex', marginLeft: 6 }}>{[['minimize', IconMinus, 'var(--bg-overlay)'], ['maximize', IconSquare, 'var(--bg-overlay)'], ['close', IconX, '#c42b1c']].map(([action, ControlIcon, hoverBg]) => <button key={action} type="button" onClick={() => window.automover?.window[action]?.()} onMouseEnter={e => { e.currentTarget.style.background = hoverBg }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }} style={{ width: 46, height: 58, border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}><ControlIcon /></button>)}</div>}</div></div>
+  return <div className="app-drag-region" style={{ height: compact ? 54 : 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: isMac ? 78 : 16, paddingRight: isMac ? 16 : 0, borderBottom: '1px solid var(--border-subtle)', background: 'rgba(22,22,29,.92)', backdropFilter: 'blur(10px)', flexShrink: 0 }}><div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}><div style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--accent)', display: 'grid', placeItems: 'center', fontWeight: 900, fontFamily: 'Syne, sans-serif', flexShrink: 0 }}>A</div><div style={{ minWidth: 0 }}><div style={{ fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 800 }}>AutoMover</div><div style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div></div>{!compact && <Pill tone={isWatcherActive ? 'live' : 'neutral'}>{isWatcherActive ? `${watchingFolders.length} live` : 'Off'}</Pill>}</div><div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>{!compact && <Button onClick={handleRun} disabled={busy || ui.isLoading}>{busy ? 'Running...' : 'Run Now'}</Button>}<button type="button" onClick={handleToggle} title="Toggle monitor" style={{ width: 44, height: 25, borderRadius: 99, border: '1px solid var(--border-default)', background: isWatcherActive ? 'var(--success)' : 'var(--bg-overlay)', position: 'relative', cursor: 'pointer' }}><span style={{ position: 'absolute', top: 3, left: isWatcherActive ? 22 : 3, width: 17, height: 17, borderRadius: '50%', background: '#fff', transition: 'left .18s', boxShadow: '0 1px 4px rgba(0,0,0,.35)' }} /></button>{!isMac && <div style={{ display: 'flex', marginLeft: 4 }}>{[['minimize', IconMinus, 'var(--bg-overlay)'], ['maximize', IconSquare, 'var(--bg-overlay)'], ['close', IconX, '#c42b1c']].map(([action, ControlIcon, hoverBg]) => <button key={action} type="button" onClick={() => window.automover?.window[action]?.()} onMouseEnter={e => { e.currentTarget.style.background = hoverBg }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }} style={{ width: compact ? 38 : 44, height: compact ? 54 : 58, border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}><ControlIcon /></button>)}</div>}</div></div>
 }
 
-function Sidebar({ activeTab, setActiveTab }) {
+function Sidebar({ activeTab, setActiveTab, compact }) {
   const { isWatcherActive, watchingFolders, rules } = useAppStore()
-  return <nav style={{ width: 228, flexShrink: 0, borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', padding: 14, gap: 4 }}><div style={{ padding: '8px 8px 18px' }}><div style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>Workspace</div></div>{NAV_ITEMS.map(item => { const active = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 11px', borderRadius: 'var(--radius)', border: 'none', background: active ? 'var(--accent-muted)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: active ? 800 : 600, textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}><Icon>{item.icon}</Icon>{item.label}</button> })}<div style={{ flex: 1 }} /><div style={{ padding: 12, borderRadius: 'var(--radius-lg)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: isWatcherActive ? 'var(--success)' : 'var(--text-muted)', boxShadow: isWatcherActive ? '0 0 7px var(--success)' : 'none' }} /><span style={{ fontSize: 12, fontWeight: 800 }}>{isWatcherActive ? 'Monitoring aktif' : 'Monitoring off'}</span></div><div style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.55 }}>{watchingFolders.length} folder dipantau · {rules.filter(r => r.isActive).length} rule aktif</div></div></nav>
+  return <nav style={{ width: compact ? 62 : 218, flexShrink: 0, borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', padding: compact ? 9 : 13, gap: 4, transition: 'width .18s ease' }}><div style={{ padding: compact ? '6px 0 12px' : '8px 8px 16px' }}>{!compact && <div style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase' }}>Workspace</div>}</div>{NAV_ITEMS.map(item => { const active = activeTab === item.id; return <button key={item.id} type="button" title={item.label} onClick={() => setActiveTab(item.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'center' : 'flex-start', gap: 10, padding: compact ? '11px 0' : '10px 11px', borderRadius: 'var(--radius)', border: 'none', background: active ? 'var(--accent-muted)' : 'transparent', color: active ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: active ? 800 : 600, textAlign: 'left', fontFamily: 'DM Sans, sans-serif' }}><Icon>{item.icon}</Icon>{!compact && item.label}</button> })}<div style={{ flex: 1 }} />{!compact && <div style={{ padding: 11, borderRadius: 'var(--radius-lg)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: isWatcherActive ? 'var(--success)' : 'var(--text-muted)', boxShadow: isWatcherActive ? '0 0 7px var(--success)' : 'none' }} /><span style={{ fontSize: 12, fontWeight: 800 }}>{isWatcherActive ? 'Monitoring' : 'Off'}</span></div><div style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.45 }}>{watchingFolders.length} folder · {rules.filter(r => r.isActive).length} rule</div></div>}</nav>
 }
 
 function AppShell() {
-  const { ui, setActiveTab, bootstrap, updateSettings } = useAppStore()
+  const { ui, setActiveTab, bootstrap } = useAppStore()
   const { activeTab, isLoading } = ui
+  const { width } = useWindowSize()
+  const compact = width < 900
   useEffect(() => { bootstrap() }, [])
   const currentTitle = useMemo(() => NAV_ITEMS.find(i => i.id === activeTab)?.label || 'Dashboard', [activeTab])
   const openCreateRule = () => setActiveTab('rules')
   const renderPage = () => {
-    if (isLoading) return <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Memuat data...</div>
-    if (activeTab === 'dashboard') return <DashboardPage onCreateRule={openCreateRule} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} onOpenPresets={() => setActiveTab('presets')} />
-    if (activeTab === 'rules') return <RulesWorkspace />
+    if (isLoading) return <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Loading...</div>
+    if (activeTab === 'dashboard') return <DashboardPage compact={compact} onCreateRule={openCreateRule} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} onOpenPresets={() => setActiveTab('presets')} />
+    if (activeTab === 'rules') return <RulesWorkspace compact={compact} />
     if (activeTab === 'preview') return <PreviewPage />
     if (activeTab === 'presets') return <PresetsPage />
-    if (activeTab === 'logs') return <HistoryPage />
+    if (activeTab === 'logs') return <HistoryPage compact={compact} />
     if (activeTab === 'reports') return <ReportsPage />
-    if (activeTab === 'settings') return <SettingsPage />
-    return <DashboardPage onCreateRule={openCreateRule} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} onOpenPresets={() => setActiveTab('presets')} />
+    if (activeTab === 'settings') return <SettingsPage compact={compact} />
+    return <DashboardPage compact={compact} onCreateRule={openCreateRule} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} onOpenPresets={() => setActiveTab('presets')} />
   }
-  return <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', overflow: 'hidden', color: 'var(--text-primary)' }}><TopBar title={currentTitle} /><div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}><Sidebar activeTab={activeTab} setActiveTab={setActiveTab} /><main style={{ flex: 1, minWidth: 0, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(124,58,237,.04), transparent 220px), var(--bg-base)' }}>{renderPage()}</main></div><ToastList /></div>
+  return <div style={{ height: '100vh', minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-base)', overflow: 'hidden', color: 'var(--text-primary)' }}><TopBar title={currentTitle} compact={compact} /><div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', overflow: 'hidden' }}><Sidebar compact={compact} activeTab={activeTab} setActiveTab={setActiveTab} /><main style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(124,58,237,.04), transparent 220px), var(--bg-base)' }}>{renderPage()}</main></div><ToastList /></div>
 }
 
 export default function App() {
