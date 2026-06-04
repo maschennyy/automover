@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import useAppStore from '../store/useAppStore'
+import RuleToolbar, { matchesRuleToolbarFilters } from './RuleToolbar'
 
 const IconEdit = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
 const IconTrash = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" /></svg>
-const IconPlus = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
 
 function truncatePath(value, max = 44) {
   if (!value) return '-'
@@ -111,10 +111,12 @@ function RuleCard({ rule, onEdit, onDelete }) {
 }
 
 export default function RuleList({ onAddNew, onEdit }) {
-  const { rules, deleteRule } = useAppStore()
+  const { rules, deleteRule, addRule } = useAppStore()
   const [confirmRule, setConfirmRule] = useState(null)
-  const sortedRules = [...rules].sort((a, b) => (Number(a.priority) || 100) - (Number(b.priority) || 100))
+  const [filters, setFilters] = useState({ search: '', status: 'all', action: 'all' })
+  const [toolbarMessage, setToolbarMessage] = useState('')
   const activeCount = rules.filter(r => r.isActive).length
+  const filteredRules = useMemo(() => [...rules].filter(rule => matchesRuleToolbarFilters(rule, filters)).sort((a, b) => (Number(a.priority) || 100) - (Number(b.priority) || 100)), [rules, filters])
 
   const handleDeleteConfirm = async () => {
     if (!confirmRule) return
@@ -122,17 +124,23 @@ export default function RuleList({ onAddNew, onEdit }) {
     setConfirmRule(null)
   }
 
+  const handleImportRules = async (importedRules) => {
+    for (const rule of importedRules) await addRule(rule)
+    setToolbarMessage(`${importedRules.length} rule imported.`)
+    setTimeout(() => setToolbarMessage(''), 3500)
+  }
+
   return (
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-        <div style={{ minWidth: 0, color: 'var(--text-muted)', fontSize: 12 }}>{rules.length} total · {activeCount} active</div>
-        <button type="button" onClick={onAddNew} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius)', color: '#fff', fontSize: 13, fontWeight: 800, padding: '8px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}><IconPlus /> New</button>
-      </div>
+      <RuleToolbar rules={rules} shownCount={filteredRules.length} activeCount={activeCount} filters={filters} setFilters={setFilters} onAddNew={onAddNew} onImportRules={handleImportRules} />
+      {toolbarMessage && <div style={{ flexShrink: 0, padding: '7px 14px', color: '#4ade80', fontSize: 12, borderBottom: '1px solid var(--border-subtle)' }}>{toolbarMessage}</div>}
 
       <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: 14, scrollbarGutter: 'stable' }}>
         {rules.length === 0 ? (
-          <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%', color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}><div><div style={{ fontSize: 42 }}>📂</div><p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-secondary)' }}>No rules yet</p><button type="button" onClick={onAddNew} style={{ background: 'var(--accent-muted)', border: '1px dashed var(--accent-border)', borderRadius: 'var(--radius)', color: 'var(--accent)', fontSize: 13, fontWeight: 800, padding: '9px 16px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}><IconPlus /> Create rule</button></div></div>
-        ) : <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 18 }}>{sortedRules.map(rule => <RuleCard key={rule.id} rule={rule} onEdit={onEdit} onDelete={setConfirmRule} />)}</div>}
+          <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%', color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}><div><div style={{ fontSize: 42 }}>📂</div><p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-secondary)' }}>No rules yet</p><button type="button" onClick={onAddNew} style={{ background: 'var(--accent-muted)', border: '1px dashed var(--accent-border)', borderRadius: 'var(--radius)', color: 'var(--accent)', fontSize: 13, fontWeight: 800, padding: '9px 16px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Create rule</button></div></div>
+        ) : filteredRules.length === 0 ? (
+          <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No rules match current filter.</div>
+        ) : <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 18 }}>{filteredRules.map(rule => <RuleCard key={rule.id} rule={rule} onEdit={onEdit} onDelete={setConfirmRule} />)}</div>}
       </div>
       {confirmRule && <ConfirmModal ruleName={confirmRule.name} onConfirm={handleDeleteConfirm} onCancel={() => setConfirmRule(null)} />}
     </div>
