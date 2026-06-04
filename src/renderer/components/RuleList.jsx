@@ -48,7 +48,7 @@ function ConfirmModal({ ruleName, onConfirm, onCancel }) {
   )
 }
 
-function Chip({ children, tone = 'accent' }) {
+function Chip({ children, tone = 'accent', title }) {
   const palette = {
     accent: ['var(--accent-muted)', 'var(--accent)', 'var(--accent-border)'],
     blue: ['#3b82f622', '#60a5fa', '#3b82f644'],
@@ -57,11 +57,11 @@ function Chip({ children, tone = 'accent' }) {
     red: ['#ef444418', '#f87171', '#ef444444'],
     neutral: ['var(--bg-overlay)', 'var(--text-muted)', 'var(--border-default)'],
   }[tone]
-  return <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 7px', borderRadius: 6, background: palette[0], color: palette[1], border: `1px solid ${palette[2]}`, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{children}</span>
+  return <span title={title} style={{ fontSize: 10, fontWeight: 800, padding: '3px 7px', borderRadius: 6, background: palette[0], color: palette[1], border: `1px solid ${palette[2]}`, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>{children}</span>
 }
 
 function SelectControl({ value, onChange, children, title }) {
-  return <select value={value} onChange={onChange} title={title} style={{ minWidth: 0, background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', borderRadius: 7, padding: '6px 8px', fontSize: 12, fontFamily: 'DM Sans, sans-serif', outline: 'none' }}>{children}</select>
+  return <select value={value} onChange={onChange} title={title} style={{ width: '100%', minWidth: 0, background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', borderRadius: 7, padding: '6px 8px', fontSize: 12, fontFamily: 'DM Sans, sans-serif', outline: 'none' }}>{children}</select>
 }
 
 function MiniLabel({ children }) {
@@ -77,7 +77,7 @@ function RuleCard({ rule, onEdit, onDelete }) {
   const updatePartial = async (partial) => updateRule({ ...rule, ...partial })
 
   return (
-    <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ background: hovered ? 'var(--bg-elevated)' : 'var(--bg-surface)', border: `1px solid ${rule.isActive ? 'var(--border-default)' : 'var(--border-subtle)'}`, borderRadius: 'var(--radius-lg)', padding: 13, display: 'flex', flexDirection: 'column', gap: 10, opacity: rule.isActive ? 1 : 0.55, transition: 'background .15s, border-color .15s, opacity .2s' }}>
+    <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ background: hovered ? 'var(--bg-elevated)' : 'var(--bg-surface)', border: `1px solid ${rule.isActive ? 'var(--border-default)' : 'var(--border-subtle)'}`, borderRadius: 'var(--radius-lg)', padding: 13, display: 'flex', flexDirection: 'column', gap: 10, opacity: rule.isActive ? 1 : 0.55, transition: 'background .15s, border-color .15s, opacity .2s', flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: rule.isActive ? 'var(--success)' : 'var(--text-muted)', flexShrink: 0, boxShadow: rule.isActive ? '0 0 5px var(--success)' : 'none' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -87,8 +87,8 @@ function RuleCard({ rule, onEdit, onDelete }) {
         <Chip tone="neutral">P{priority}</Chip>
         <Chip tone={rule.action === 'move' ? 'blue' : 'green'}>{rule.action === 'move' ? 'Move' : 'Copy'}</Chip>
         <button type="button" onClick={() => toggleRule(rule.id)} title={rule.isActive ? 'Disable' : 'Enable'} style={{ width: 34, height: 20, borderRadius: 99, border: '1px solid var(--border-default)', background: rule.isActive ? 'var(--accent)' : 'var(--bg-overlay)', position: 'relative', cursor: 'pointer', flexShrink: 0 }}><span style={{ position: 'absolute', top: 2, left: rule.isActive ? 16 : 2, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left .18s' }} /></button>
-        <button type="button" onClick={() => onEdit(rule)} title="Edit" style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center' }}><IconEdit /></button>
-        <button type="button" onClick={() => onDelete(rule)} title="Delete" style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center' }}><IconTrash /></button>
+        <button type="button" onClick={() => onEdit(rule)} title="Edit" style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', flexShrink: 0 }}><IconEdit /></button>
+        <button type="button" onClick={() => onDelete(rule)} title="Delete" style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', flexShrink: 0 }}><IconTrash /></button>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -102,18 +102,9 @@ function RuleCard({ rule, onEdit, onDelete }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '84px minmax(130px, 1fr) minmax(140px, 1fr)', gap: 8, alignItems: 'end' }}>
-        <div>
-          <MiniLabel>Priority</MiniLabel>
-          <input type="number" min="1" max="999" value={priority} onChange={e => updatePartial({ priority: Number(e.target.value || 100) })} title="Lower number runs first" style={{ width: '100%', background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', borderRadius: 7, padding: '6px 8px', fontSize: 12, fontFamily: 'DM Sans, sans-serif', outline: 'none' }} />
-        </div>
-        <div>
-          <MiniLabel>Conflict</MiniLabel>
-          <SelectControl value={conflict} onChange={e => updatePartial({ conflictStrategy: e.target.value })} title="Conflict strategy"><option value="rename">Rename</option><option value="skip">Skip</option><option value="overwrite">Overwrite</option></SelectControl>
-        </div>
-        <div>
-          <MiniLabel>Duplicate</MiniLabel>
-          <SelectControl value={duplicate} onChange={e => updatePartial({ duplicateStrategy: e.target.value })} title="Duplicate detection"><option value="none">Off</option><option value="skip-same-name-size">Skip same name+size</option></SelectControl>
-        </div>
+        <div><MiniLabel>Priority</MiniLabel><input type="number" min="1" max="999" value={priority} onChange={e => updatePartial({ priority: Number(e.target.value || 100) })} title="Lower number runs first" style={{ width: '100%', background: 'var(--bg-overlay)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', borderRadius: 7, padding: '6px 8px', fontSize: 12, fontFamily: 'DM Sans, sans-serif', outline: 'none' }} /></div>
+        <div><MiniLabel>Conflict</MiniLabel><SelectControl value={conflict} onChange={e => updatePartial({ conflictStrategy: e.target.value })} title="Conflict strategy"><option value="rename">Rename</option><option value="skip">Skip</option><option value="overwrite">Overwrite</option></SelectControl></div>
+        <div><MiniLabel>Duplicate</MiniLabel><SelectControl value={duplicate} onChange={e => updatePartial({ duplicateStrategy: e.target.value })} title="Duplicate detection"><option value="none">Off</option><option value="skip-same-name-size">Skip same name+size</option></SelectControl></div>
       </div>
     </div>
   )
@@ -132,16 +123,16 @@ export default function RuleList({ onAddNew, onEdit }) {
   }
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-        <div style={{ minWidth: 0 }}><h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, margin: 0 }}>Rules</h1><p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '3px 0 0' }}>{rules.length} total · {activeCount} active</p></div>
+    <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+        <div style={{ minWidth: 0, color: 'var(--text-muted)', fontSize: 12 }}>{rules.length} total · {activeCount} active</div>
         <button type="button" onClick={onAddNew} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius)', color: '#fff', fontSize: 13, fontWeight: 800, padding: '8px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}><IconPlus /> New</button>
       </div>
 
-      <div className="panel-scroll" style={{ flex: 1, padding: 14 }}>
+      <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: 14, scrollbarGutter: 'stable' }}>
         {rules.length === 0 ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%', color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}><div><div style={{ fontSize: 42 }}>📂</div><p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-secondary)' }}>No rules yet</p><button type="button" onClick={onAddNew} style={{ background: 'var(--accent-muted)', border: '1px dashed var(--accent-border)', borderRadius: 'var(--radius)', color: 'var(--accent)', fontSize: 13, fontWeight: 800, padding: '9px 16px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}><IconPlus /> Create rule</button></div></div>
-        ) : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{sortedRules.map(rule => <RuleCard key={rule.id} rule={rule} onEdit={onEdit} onDelete={setConfirmRule} />)}</div>}
+        ) : <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 18 }}>{sortedRules.map(rule => <RuleCard key={rule.id} rule={rule} onEdit={onEdit} onDelete={setConfirmRule} />)}</div>}
       </div>
       {confirmRule && <ConfirmModal ruleName={confirmRule.name} onConfirm={handleDeleteConfirm} onCancel={() => setConfirmRule(null)} />}
     </div>
