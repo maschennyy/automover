@@ -133,7 +133,6 @@ function DashboardPage({ onCreateRule, onOpenRules, onOpenPreview, onOpenPresets
           <StatCard compact={compact} label="Folders" value={watchingFolders.length} hint={isWatcherActive ? 'live' : 'off'} tone={isWatcherActive ? 'live' : 'neutral'} />
           <StatCard compact={compact} label="History" value={logs.length} hint="logs" />
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'minmax(0, 1.3fr) minmax(240px, .7fr)', gap: 14, minHeight: compact ? 'auto' : 280 }}>
           <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '13px 15px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -144,7 +143,6 @@ function DashboardPage({ onCreateRule, onOpenRules, onOpenPreview, onOpenPresets
               {recentLogs.length === 0 ? <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No activity yet.</div> : recentLogs.map(log => <div key={log.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, padding: '9px 8px', borderBottom: '1px solid var(--border-subtle)' }}><div style={{ minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.fileName}</div><div style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.to}</div></div><Pill tone={log.undone ? 'danger' : 'accent'}>{log.action}</Pill></div>)}
             </div>
           </section>
-
           <section style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 15, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
             <h3 style={{ margin: 0, fontSize: 14 }}>Quick Actions</h3>
             <Button compact={compact} onClick={handleRun} disabled={runBusy || ui.isLoading} primary>{runBusy ? 'Running...' : 'Run Now'}</Button>
@@ -166,17 +164,10 @@ function RulesWorkspace({ compact }) {
   const openEdit = (rule) => { setEditingRule(rule); setPanelOpen(true) }
   const closePanel = () => { setPanelOpen(false); setTimeout(() => setEditingRule(null), 160) }
   const handleSave = async (rule) => { if (editingRule && editingRule.id) await updateRule(rule); else await addRule(rule); closePanel() }
-
-  if (compact && panelOpen) {
-    return <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}><RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} /></div>
-  }
-
+  if (compact && panelOpen) return <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' }}><RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} /></div>
   return (
     <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'grid', gridTemplateColumns: panelOpen ? (compact ? '1fr' : 'minmax(0, 1fr) minmax(380px, 500px)') : (compact ? '1fr' : 'minmax(0, 1fr) 300px'), overflow: 'hidden' }}>
-      <section style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <PageHeader compact={compact} eyebrow="Rules" title="Rules" desc="Kelola aturan sortir file." actions={<Button compact={compact} onClick={openCreate} primary>New</Button>} />
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}><RuleList onAddNew={openCreate} onEdit={openEdit} /></div>
-      </section>
+      <section style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}><PageHeader compact={compact} eyebrow="Rules" title="Rules" desc="Kelola aturan sortir file." actions={<Button compact={compact} onClick={openCreate} primary>New</Button>} /><div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}><RuleList onAddNew={openCreate} onEdit={openEdit} /></div></section>
       {!compact && <aside style={{ minWidth: 0, minHeight: 0, borderLeft: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', overflow: 'hidden' }}>{panelOpen ? <RuleBuilder rule={editingRule ?? null} onSave={handleSave} onCancel={closePanel} /> : <Inspector title="Rule Detail" subtitle="Pilih rule atau buat rule baru." items={[[ 'Priority', 'Angka kecil jalan lebih dulu.' ], [ 'Safety', 'Gunakan Preview sebelum Execute.' ]]} action={<Button onClick={openCreate} primary>New Rule</Button>} />}</aside>}
     </div>
   )
@@ -222,10 +213,10 @@ function AppShell() {
     if (isLoading) return <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Loading...</div>
     if (activeTab === 'dashboard') return <DashboardPage compact={compact} onCreateRule={openCreateRule} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} onOpenPresets={() => setActiveTab('presets')} />
     if (activeTab === 'rules') return <RulesWorkspace compact={compact} />
-    if (activeTab === 'preview') return <PreviewPage />
-    if (activeTab === 'presets') return <PresetsPage />
+    if (activeTab === 'preview') return <PreviewPage compact={compact} />
+    if (activeTab === 'presets') return <PresetsPage compact={compact} />
     if (activeTab === 'logs') return <HistoryPage compact={compact} />
-    if (activeTab === 'reports') return <ReportsPage />
+    if (activeTab === 'reports') return <ReportsPage compact={compact} />
     if (activeTab === 'settings') return <SettingsPage compact={compact} />
     return <DashboardPage compact={compact} onCreateRule={openCreateRule} onOpenRules={() => setActiveTab('rules')} onOpenPreview={() => setActiveTab('preview')} onOpenPresets={() => setActiveTab('presets')} />
   }
