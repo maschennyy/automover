@@ -44,8 +44,8 @@ function exportPreviewCsv(result) {
 }
 
 function buildExecuteMessage(summary) {
-  const lines = [
-    'Execute planned actions?',
+  return [
+    'Execute current preview result?',
     '',
     `Planned files     : ${summary.planned || 0}`,
     `Skipped files     : ${summary.skipped || 0}`,
@@ -56,9 +56,8 @@ function buildExecuteMessage(summary) {
     `Duplicates        : ${summary.duplicates || 0}`,
     `Errors            : ${summary.error || 0}`,
     '',
-    'File operation will run for real after this confirmation.',
-  ]
-  return lines.join('\n')
+    'Only files shown in this preview will be executed.',
+  ].join('\n')
 }
 
 function EmptyState({ onRun, busy, compact }) {
@@ -76,7 +75,7 @@ function PreviewInspector({ result }) {
 }
 
 export default function PreviewPage({ compact = false }) {
-  const { runNow, fetchLogs } = useAppStore()
+  const { fetchLogs } = useAppStore()
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
   const [executing, setExecuting] = useState(false)
@@ -92,7 +91,16 @@ export default function PreviewPage({ compact = false }) {
     if (errorCount > 0) return setError('Preview masih memiliki error. Perbaiki rule terlebih dahulu sebelum execute.')
     if (!window.confirm(buildExecuteMessage(result?.summary || {}))) return
     setExecuting(true); setError(''); setNotice('')
-    try { const runResult = await runNow(); await fetchLogs(); const successCount = runResult?.success?.length || 0; const skippedCount = runResult?.skipped?.length || 0; const errorCountRun = runResult?.errors?.length || 0; setNotice(`Done: ${successCount} success${skippedCount ? `, ${skippedCount} skipped` : ''}${errorCountRun ? `, ${errorCountRun} error` : ''}.`); await runPreview() } catch (err) { setError(err.message) } finally { setExecuting(false) }
+    try {
+      const executableItems = (result?.items || []).filter(item => item.status === 'planned' || item.status === 'skipped')
+      const runResult = await window.automover.preview.execute(executableItems)
+      await fetchLogs()
+      const successCount = runResult?.success?.length || 0
+      const skippedCount = runResult?.skipped?.length || 0
+      const errorCountRun = runResult?.errors?.length || 0
+      setNotice(`Done: ${successCount} success${skippedCount ? `, ${skippedCount} skipped` : ''}${errorCountRun ? `, ${errorCountRun} error` : ''}.`)
+      await runPreview()
+    } catch (err) { setError(err.message) } finally { setExecuting(false) }
   }
 
   const summary = result?.summary || { planned: 0, skipped: 0, error: 0, createFolders: 0, conflicts: 0, renamed: 0, overwritten: 0, duplicates: 0, folders: 0 }
