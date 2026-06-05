@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+const listenerMap = new Map()
+
+function getListenerKey(channel, callback) {
+  return `${channel}:${callback?.toString?.() || 'anonymous'}`
+}
+
 contextBridge.exposeInMainWorld('automover', {
   rules: {
     getAll:  ()       => ipcRenderer.invoke('rules:getAll'),
@@ -40,7 +46,8 @@ contextBridge.exposeInMainWorld('automover', {
   },
 
   preview: {
-    run: () => ipcRenderer.invoke('preview:run'),
+    run:     ()      => ipcRenderer.invoke('preview:run'),
+    execute: (items) => ipcRenderer.invoke('preview:execute', items),
   },
 
   store: {
@@ -66,18 +73,24 @@ contextBridge.exposeInMainWorld('automover', {
   },
 
   on: (channel, callback) => {
-    const allowed = [
-      'settings:changed',
-      'watcher:fileProcessed',
-      'watcher:error',
-      'watcher:statusChanged',
-    ]
-    if (allowed.includes(channel)) {
-      ipcRenderer.on(channel, (_event, ...args) => callback(...args))
-    }
+    const allowed = ['settings:changed', 'watcher:fileProcessed', 'watcher:error', 'watcher:statusChanged']
+    if (!allowed.includes(channel) || typeof callback !== 'function') return
+    const wrapped = (_event, ...args) => callback(...args)
+    const key = getListenerKey(channel, callback)
+    const oldWrapped = listenerMap.get(key)
+    if (oldWrapped) ipcRenderer.removeListener(channel, oldWrapped)
+    listenerMap.set(key, wrapped)
+    ipcRenderer.on(channel, wrapped)
   },
 
   off: (channel, callback) => {
-    ipcRenderer.removeListener(channel, callback)
+    const key = getListenerKey(channel, callback)
+    const wrapped = listenerMap.get(key)
+    if (wrapped) {
+      ipcRenderer.removeListener(channel, wrapped)
+      listenerMap.delete(key)
+      return
+    }
+    if (typeof callback === 'function') ipcRenderer.removeListener(channel, callback)
   },
 })
