@@ -1,8 +1,13 @@
 import { create } from 'zustand'
 
-/**
- * AutoMover — Central Zustand Store
- */
+function applyTheme(theme) {
+  const safeTheme = theme === 'light' ? 'light' : 'dark'
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', safeTheme)
+  }
+  return safeTheme
+}
+
 const useAppStore = create((set, get) => ({
   rules: [],
 
@@ -71,12 +76,20 @@ const useAppStore = create((set, get) => ({
 
   fetchSettings: async () => {
     const settings = await window.automover.settings.get()
-    set({ settings: { ...get().settings, ...(settings ?? {}) } })
+    const merged = { ...get().settings, ...(settings ?? {}) }
+    merged.theme = applyTheme(merged.theme)
+    set({ settings: merged })
   },
 
   updateSettings: async (partial) => {
-    const result = await window.automover.settings.update(partial)
-    if (result.success) set({ settings: { ...get().settings, ...result.settings } })
+    const nextPartial = { ...partial }
+    if (nextPartial.theme) nextPartial.theme = applyTheme(nextPartial.theme)
+    const result = await window.automover.settings.update(nextPartial)
+    if (result.success) {
+      const merged = { ...get().settings, ...result.settings }
+      merged.theme = applyTheme(merged.theme)
+      set({ settings: merged })
+    }
     return result
   },
 
@@ -166,7 +179,9 @@ const useAppStore = create((set, get) => ({
     }
 
     window.automover.on('settings:changed', (newSettings) => {
-      set({ settings: { ...get().settings, ...(newSettings ?? {}) } })
+      const merged = { ...get().settings, ...(newSettings ?? {}) }
+      merged.theme = applyTheme(merged.theme)
+      set({ settings: merged })
     })
 
     window.automover.on('watcher:fileProcessed', async (logEntry) => {
@@ -176,10 +191,7 @@ const useAppStore = create((set, get) => ({
     })
 
     window.automover.on('watcher:error', (errorInfo) => get().addToast('error', errorInfo.message))
-
-    window.automover.on('watcher:statusChanged', ({ isActive, watchingFolders }) => {
-      set({ isWatcherActive: isActive, watchingFolders: watchingFolders ?? [] })
-    })
+    window.automover.on('watcher:statusChanged', ({ isActive, watchingFolders }) => set({ isWatcherActive: isActive, watchingFolders: watchingFolders ?? [] }))
 
     try {
       const status = await window.automover.watcher.getStatus()
